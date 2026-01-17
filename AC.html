@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lecture Player | JEE Matrix</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=Merriweather:ital,wght@0,300;0,400;0,700;1,400&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { 
+                        sans: ['Inter', 'sans-serif'],
+                        serif: ['Merriweather', 'serif'],
+                    },
+                    colors: { background: '#020617' },
+                    animation: { 'fade-in': 'fadeIn 0.5s ease-out forwards' },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0', transform: 'translateY(10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #020617;
+            color: #f8fafc;
+            background-image: linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            min-height: 100vh;
+        }
+
+        /* Video Container (16:9) */
+        .video-container {
+            position: relative;
+            padding-bottom: 56.25%;
+            height: 0;
+            overflow: hidden;
+            background: #000;
+            border-radius: 16px;
+            box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .video-container iframe {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        /* Notes Specific Styles */
+        .notes-content p, .notes-content li {
+            font-family: 'Merriweather', serif;
+            color: #cbd5e1;
+            line-height: 1.8;
+            margin-bottom: 1rem;
+        }
+        .notes-content h2 {
+            font-family: 'Inter', sans-serif;
+            color: #22d3ee; /* Cyan-400 */
+            font-weight: 700;
+            font-size: 1.5rem;
+            margin-top: 3rem;
+            margin-bottom: 1rem;
+            border-left: 4px solid #06b6d4; /* Cyan-500 */
+            padding-left: 1rem;
+        }
+        .notes-content h3 {
+            font-family: 'Inter', sans-serif;
+            color: #f8fafc;
+            font-weight: 600;
+            font-size: 1.25rem;
+            margin-top: 2rem;
+            margin-bottom: 0.75rem;
+        }
+        .notes-content strong { color: #fff; }
+        .notes-content ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1.5rem; }
+        .notes-content ol { list-style-type: decimal; padding-left: 1.5rem; margin-bottom: 1.5rem; }
+        
+        .formula-box {
+            background-color: #1e293b;
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin: 1.5rem 0;
+            text-align: center;
+            font-family: 'Inter', sans-serif;
+            overflow-x: auto;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+
+        .note-highlight {
+            background-color: rgba(34, 211, 238, 0.1); 
+            border-left: 4px solid #22d3ee;
+            padding: 1rem 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 0 8px 8px 0;
+            font-style: italic;
+        }
+
+        /* --- CHAPTER 7 ANIMATIONS (Ported from AC.html) --- */
+        .diagram-container {
+            background-color: #0f172a;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 30px;
+            margin: 2rem 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            text-align: center;
+        }
+        .caption { margin-top: 15px; font-size: 0.85rem; color: #94a3b8; font-family: 'Inter', sans-serif; font-weight: bold; }
+
+        /* Animation 1: Phasor Concept */
+        .phasor-box { width: 300px; height: 150px; position: relative; display: flex; align-items: center; gap: 20px; }
+        .circle-plot { width: 100px; height: 100px; border: 1px dashed #64748b; border-radius: 50%; position: relative; }
+        .phasor-arrow {
+            width: 2px; height: 50px; background-color: #22d3ee;
+            position: absolute; bottom: 50px; left: 50px; transform-origin: bottom;
+            animation: rotatePhasor 4s infinite linear;
+        }
+        .phasor-arrow::after { content: ''; position: absolute; top: 0; left: -3px; border: 4px solid transparent; border-bottom-color: #22d3ee; }
+        .wave-graph { width: 150px; height: 100px; border-left: 2px solid #64748b; border-bottom: 2px solid #64748b; position: relative; overflow: hidden; }
+        .sine-dot {
+            width: 8px; height: 8px; background-color: #22d3ee; border-radius: 50%;
+            position: absolute; left: 0; top: 50px; animation: traceSine 4s infinite linear;
+        }
+        @keyframes rotatePhasor { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes traceSine {
+            0% { left: 0; transform: translateY(0); }
+            25% { left: 37px; transform: translateY(-40px); }
+            50% { left: 75px; transform: translateY(0); }
+            75% { left: 112px; transform: translateY(40px); }
+            100% { left: 150px; transform: translateY(0); }
+        }
+
+        /* Animation 2: Phase Comparison */
+        .phase-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; width: 100%; }
+        .phase-card { background-color: #1e293b; padding: 10px; border-radius: 8px; text-align: center; height: 120px; position: relative; display: flex; justify-content: center; align-items: center; }
+        .phasor-v {
+            position: absolute; width: 4px; height: 40px; background-color: #fbbf24; /* Voltage - Amber */
+            bottom: 60px; left: 50%; transform-origin: bottom; animation: rotateV 4s infinite linear;
+        }
+        .phasor-i {
+            position: absolute; width: 4px; height: 30px; background-color: #34d399; /* Current - Emerald */
+            bottom: 60px; left: 50%; transform-origin: bottom;
+        }
+        .resistor-i { animation: rotateV 4s infinite linear; }
+        .inductor-i { animation: rotateV 4s infinite linear; animation-delay: -1s; } /* -90deg */
+        .capacitor-i { animation: rotateV 4s infinite linear; animation-delay: 1s; } /* +90deg */
+        @keyframes rotateV { 0% { transform: translateX(-50%) rotate(0deg); } 100% { transform: translateX(-50%) rotate(360deg); } }
+
+        /* Animation 3: Resonance */
+        .resonance-box { width: 300px; height: 150px; border-left: 2px solid white; border-bottom: 2px solid white; position: relative; }
+        .res-dot {
+            width: 10px; height: 10px; background-color: #38bdf8; border-radius: 50%; position: absolute;
+            animation: traceResonance 4s infinite ease-in-out;
+        }
+        @keyframes traceResonance {
+            0% { bottom: 10px; left: 0px; }
+            50% { bottom: 130px; left: 150px; transform: scale(1.5); box-shadow: 0 0 15px #38bdf8; }
+            100% { bottom: 10px; left: 300px; }
+        }
+
+        /* Animation 4: Transformer */
+        .transformer-box { width: 300px; height: 150px; position: relative; display: flex; justify-content: space-between; align-items: center; }
+        .core { position: absolute; top: 20px; left: 50px; width: 200px; height: 110px; border: 15px solid #475569; border-radius: 5px; z-index: 0; }
+        .coil-p {
+            width: 40px; height: 80px; border: 4px solid #fbbf24; border-radius: 10px; position: absolute; left: 30px;
+            background: repeating-linear-gradient(0deg, transparent, transparent 10px, rgba(251, 191, 36, 0.2) 10px, rgba(251, 191, 36, 0.2) 12px); z-index: 1;
+        }
+        .coil-s {
+            width: 40px; height: 80px; border: 4px solid #34d399; border-radius: 10px; position: absolute; right: 30px;
+            background: repeating-linear-gradient(0deg, transparent, transparent 5px, rgba(52, 211, 153, 0.2) 5px, rgba(52, 211, 153, 0.2) 7px); z-index: 1;
+        }
+        .flux-dot {
+            width: 8px; height: 8px; background-color: white; border-radius: 50%; position: absolute;
+            offset-path: path('M 60 30 H 240 V 120 H 60 Z'); animation: flowFlux 4s infinite linear;
+        }
+        @keyframes flowFlux { 0% { offset-distance: 0%; opacity: 0;} 10% { opacity: 1; } 90% { opacity: 1; } 100% { offset-distance: 100%; opacity: 0;} }
+
+        /* Quiz Specifics */
+        .quiz-option {
+            background: #1e293b;
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 1rem 1.25rem;
+            border-radius: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .quiz-option:hover { background: #334155; }
+        .quiz-option.selected { background: rgba(34, 211, 238, 0.2); border-color: #22d3ee; }
+        .quiz-circle { width: 20px; height: 20px; border: 2px solid #64748b; border-radius: 50%; flex-shrink: 0; }
+        .quiz-option.selected .quiz-circle { border-color: #22d3ee; background: #22d3ee; }
+
+        /* Pie Chart */
+        .pie-chart {
+            width: 120px; height: 120px; border-radius: 50%;
+            margin: 15px 0;
+            background: conic-gradient(#22c55e 0deg, #ef4444 0deg);
+            position: relative;
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+        }
+        .pie-inner {
+            position: absolute; top: 15px; left: 15px;
+            width: 90px; height: 90px;
+            background: #1e293b; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; color: #fff;
+        }
+
+        /* Graph Container */
+        .graph-container {
+            height: 140px;
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+            padding-bottom: 5px;
+            border-bottom: 2px solid rgba(255,255,255,0.1);
+            margin-top: 20px;
+            overflow-x: auto;
+            width: 100%;
+            padding-right: 10px;
+        }
+        .graph-bar-group {
+            flex: 0 0 auto;
+            min-width: 45px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100%;
+            justify-content: flex-end;
+        }
+        .graph-bar {
+            width: 100%;
+            background: linear-gradient(to top, #06b6d4, #22d3ee);
+            border-radius: 4px 4px 0 0;
+            transition: height 1s ease-out;
+            position: relative;
+            min-height: 4px;
+        }
+        .graph-label {
+            margin-top: 8px; font-size: 0.65rem; color: #94a3b8;
+            text-align: center; width: 100%; white-space: nowrap;
+            overflow: hidden; text-overflow: ellipsis;
+        }
+        .graph-value {
+            position: absolute; top: -18px; left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.65rem; color: #fff; font-weight: bold;
+        }
+        .bar-bg { background: rgba(255,255,255,0.05); height: 6px; border-radius: 99px; overflow: hidden; }
+        .bar-fill { height: 100%; background: #22d3ee; transition: width 1s ease; }
+    </style>
+</head>
+<body class="flex flex-col h-screen overflow-hidden">
+
+    <header class="h-16 border-b border-white/5 bg-[#020617]/90 backdrop-blur-md flex items-center justify-between px-6 z-[100] flex-shrink-0 relative">
+        <div class="flex items-center gap-4">
+            <a href="physics.html" class="w-10 h-10 rounded-full hover:bg-white/5 flex items-center justify-center text-slate-400 hover:text-white transition-all group cursor-pointer" title="Back to Chapters">
+                <svg class="w-5 h-5 group-hover:-translate-x-1 transition-transform pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+            </a>
+            <div>
+                <p class="text-[10px] uppercase tracking-widest text-cyan-400 font-bold" id="header-subtitle">Now Watching</p>
+                <h1 id="header-title" class="text-sm md:text-base font-bold text-white truncate max-w-[200px] md:max-w-md">Alternating Current</h1>
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+            <button id="quiz-back-btn" onclick="exitQuiz()" class="hidden px-3 py-1.5 text-xs font-bold bg-white/10 hover:bg-white/20 rounded-lg text-white transition-colors border border-white/10">
+                Back to Lecture
+            </button>
+            <span class="text-xs text-slate-500 font-medium hidden md:block" id="save-status">Tracking Progress...</span>
+            <div class="flex items-center gap-2 bg-slate-800 px-3 py-1 rounded-full border border-white/10">
+                 <div class="w-2 h-2 rounded-full bg-orange-500 animate-pulse" id="live-indicator"></div>
+                 <span class="text-xs font-bold text-white" id="live-percent">0%</span>
+            </div>
+        </div>
+        <div id="visual-progress" class="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-cyan-500 to-blue-500 transition-all duration-700 ease-in-out shadow-[0_0_10px_rgba(34,211,238,0.5)]" style="width: 0%"></div>
+    </header>
+
+    <main class="flex-grow overflow-y-auto p-4 md:p-8 flex flex-col items-center relative">
+        
+        <div id="content-view" class="w-full max-w-4xl animate-fade-in pb-20">
+            
+            <div class="video-container mb-6">
+                <iframe id="main-player" src="https://www.youtube.com/embed/j5wR8pfqyh4?autoplay=0&rel=0&modestbranding=1" title="Video Player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+            </div>
+
+            <div class="flex flex-col md:flex-row items-center justify-between gap-4 p-6 bg-[#0f172a] border border-white/5 rounded-2xl shadow-lg mb-10">
+                <div class="w-full md:w-auto">
+                    <h2 id="video-title" class="text-2xl font-bold text-white mb-1">Alternating Current</h2>
+                    <p class="text-slate-400 text-sm">Physics • Class 12 • Chapter 7</p>
+                </div>
+                <div class="flex items-center gap-3 w-full md:w-auto">
+                    <button id="mark-done-btn" onclick="toggleStatus()" class="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-slate-800 border border-slate-600 transition-all text-sm font-semibold text-slate-200 group cursor-not-allowed opacity-50">
+                        <div class="w-5 h-5 rounded-full border-2 border-slate-400 group-hover:border-white flex items-center justify-center">
+                            <svg class="w-3 h-3 text-white opacity-0 transition-opacity check-icon" fill="currentColor" viewBox="0 0 20 20"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"></path></svg>
+                        </div>
+                        <span class="btn-text" id="mark-btn-text">Locked (Studying...)</span>
+                    </button>
+                    
+                    <button onclick="startQuiz()" class="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/40 hover:-translate-y-0.5 transition-all group">
+                        <span>Take Test</span>
+                        <svg class="w-5 h-5 group-hover:rotate-6 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                    </button>
+                </div>
+            </div>
+
+            <div id="detailed-notes" class="notes-content">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="h-8 w-1 bg-cyan-500 rounded-full"></div>
+                    <h2 class="!m-0 !border-0 !p-0 text-3xl text-white">Detailed Physics Notes</h2>
+                </div>
+                
+                <p class="text-slate-400 italic mb-8">Comprehensive notes based on NCERT Class 12 Physics - Chapter 7</p>
+
+                <section id="intro">
+                    <h2>1. Introduction</h2>
+                    <p>An electric current whose magnitude changes with time and direction reverses periodically is called <strong>Alternating Current (AC)</strong>.</p>
+                    <ul>
+                        <li><strong>Why AC?</strong> AC voltages can be easily stepped up or down using transformers. This reduces energy loss during long-distance transmission.</li>
+                        <li><strong>Equation:</strong> \( v = v_m \sin(\omega t) \) where \( v_m \) is the peak voltage and \( \omega \) is the angular frequency.</li>
+                    </ul>
+                </section>
+
+                <section id="resistor">
+                    <h2>2. AC Voltage Applied to a Resistor</h2>
+                    <p>When an AC source is connected to a resistor \( R \), the current is:</p>
+                    <div class="formula-box">
+                        $$ i = \frac{v_m}{R} \sin(\omega t) = i_m \sin(\omega t) $$
+                    </div>
+                    <ul>
+                        <li><strong>Phase:</strong> Current and Voltage are <strong>in phase</strong> (reach maxima and minima simultaneously).</li>
+                        <li><strong>Power:</strong> Instantaneous power \( p = i^2 R \). Average power \( P = \frac{1}{2}i_m^2 R \).</li>
+                        <li><strong>RMS Value:</strong> Root Mean Square current (\( I \)) is defined such that \( P = I^2 R \).
+                            $$ I = \frac{i_m}{\sqrt{2}} \approx 0.707 i_m $$
+                            $$ V = \frac{v_m}{\sqrt{2}} \approx 0.707 v_m $$
+                        </li>
+                    </ul>
+                </section>
+
+                <section id="phasors">
+                    <h2>3. Representation by Phasors</h2>
+                    <p>A <strong>Phasor</strong> is a vector that rotates about the origin with angular speed \( \omega \). Its vertical projection represents the sinusoidally varying quantity (voltage or current).</p>
+                    
+                    <div class="diagram-container">
+                        <div class="phasor-box">
+                            <div class="circle-plot">
+                                <div class="phasor-arrow"></div>
+                            </div>
+                            <div class="wave-graph">
+                                <div class="sine-dot"></div>
+                            </div>
+                        </div>
+                        <div class="caption">
+                            <strong>Figure 7.1 (Animated):</strong> A rotating phasor (left) generates a sinusoidal wave (right) over time.
+                        </div>
+                    </div>
+                </section>
+
+                <section id="inductor">
+                    <h2>4. AC Voltage Applied to an Inductor</h2>
+                    <p>For a pure inductor \( L \), the back emf is \( \varepsilon = -L \frac{di}{dt} \). By Kirchhoff's loop rule:</p>
+                    <div class="formula-box">
+                        $$ i = i_m \sin(\omega t - \pi/2) $$
+                    </div>
+                    <ul>
+                        <li><strong>Phase:</strong> Current <strong>lags</strong> Voltage by \( \pi/2 \).</li>
+                        <li><strong>Inductive Reactance (\( X_L \)):</strong> The opposition to current flow.
+                            $$ X_L = \omega L $$
+                        </li>
+                        <li><strong>Power:</strong> The average power consumed by a pure inductor is <strong>zero</strong>.</li>
+                    </ul>
+                </section>
+
+                <section id="capacitor">
+                    <h2>5. AC Voltage Applied to a Capacitor</h2>
+                    <p>For a capacitor \( C \), the voltage is \( v = q/C \). Differentiating charge gives current:</p>
+                    <div class="formula-box">
+                        $$ i = i_m \sin(\omega t + \pi/2) $$
+                    </div>
+                    <ul>
+                        <li><strong>Phase:</strong> Current <strong>leads</strong> Voltage by \( \pi/2 \).</li>
+                        <li><strong>Capacitive Reactance (\( X_C \)):</strong>
+                            $$ X_C = \frac{1}{\omega C} $$
+                        </li>
+                        <li><strong>Power:</strong> The average power consumed by a pure capacitor is <strong>zero</strong>.</li>
+                    </ul>
+
+                    <div class="diagram-container">
+                        <div class="phase-grid">
+                            <div class="phase-card">
+                                <div class="phasor-v"></div>
+                                <div class="phasor-i resistor-i"></div>
+                                <div style="position:absolute; bottom:10px; color:#9ca3af; font-size:0.8rem;">Resistor<br>(In Phase)</div>
+                            </div>
+                            <div class="phase-card">
+                                <div class="phasor-v"></div>
+                                <div class="phasor-i inductor-i"></div>
+                                <div style="position:absolute; bottom:10px; color:#9ca3af; font-size:0.8rem;">Inductor<br>(I Lags)</div>
+                            </div>
+                            <div class="phase-card">
+                                <div class="phasor-v"></div>
+                                <div class="phasor-i capacitor-i"></div>
+                                <div style="position:absolute; bottom:10px; color:#9ca3af; font-size:0.8rem;">Capacitor<br>(I Leads)</div>
+                            </div>
+                        </div>
+                        <div class="caption">
+                            <strong>Figure 7.2 (Animated):</strong> Phase relationship between Voltage (Amber) and Current (Green) for R, L, and C.
+                        </div>
+                    </div>
+                </section>
+
+                <section id="lcr">
+                    <h2>6. Series LCR Circuit</h2>
+                    <p>When Resistor \( R \), Inductor \( L \), and Capacitor \( C \) are connected in series, the impedance \( Z \) is:</p>
+                    <div class="formula-box">
+                        $$ Z = \sqrt{R^2 + (X_C - X_L)^2} $$
+                    </div>
+                    <p>The phase difference \( \phi \) is given by:</p>
+                    <div class="formula-box">
+                        $$ \tan \phi = \frac{X_C - X_L}{R} $$
+                    </div>
+                    <ul>
+                        <li>If \( X_C > X_L \): Circuit is capacitive, current leads.</li>
+                        <li>If \( X_L > X_C \): Circuit is inductive, current lags.</li>
+                    </ul>
+                </section>
+
+                <section id="resonance">
+                    <h2>8. Resonance</h2>
+                    <p>In an LCR circuit, resonance occurs when \( X_L = X_C \). At this point, impedance \( Z \) is minimum (\( Z=R \)), and current amplitude is <strong>maximum</strong>.</p>
+                    <div class="formula-box">
+                        $$ \omega_0 = \frac{1}{\sqrt{LC}} $$
+                    </div>
+                    
+                    <div class="diagram-container">
+                        <div class="resonance-box">
+                            <div class="res-dot"></div>
+                        </div>
+                        <div class="caption">
+                            <strong>Figure 7.3 (Animated):</strong> Current amplitude peaks sharply at the resonant frequency \( \omega_0 \).
+                        </div>
+                    </div>
+                    <p>Used in tuning mechanisms of radios and TVs.</p>
+                </section>
+
+                <section id="power">
+                    <h2>7. Power in AC Circuit</h2>
+                    <p>The average power dissipated in an AC circuit depends on the phase difference \( \phi \).</p>
+                    <div class="formula-box">
+                        $$ P = V I \cos \phi $$
+                    </div>
+                    <ul>
+                        <li><strong>Power Factor (\( \cos \phi \)):</strong> \( \cos \phi = R/Z \).</li>
+                        <li><strong>Resistive Circuit:</strong> \( \phi = 0 \Rightarrow \cos \phi = 1 \), Power is maximum (\( P=VI \)).</li>
+                        <li><strong>Purely Inductive/Capacitive:</strong> \( \phi = \pi/2 \Rightarrow \cos \phi = 0 \), Power is zero. Current is "Wattless".</li>
+                    </ul>
+                </section>
+
+                <section id="transformer">
+                    <h2>9. Transformers</h2>
+                    <p>A device used to increase or decrease AC voltage. It works on the principle of <strong>Mutual Induction</strong>.</p>
+
+                    <div class="diagram-container">
+                        <div class="transformer-box">
+                            <div class="core"></div>
+                            <div class="coil-p"></div>
+                            <div class="coil-s"></div>
+                            <div class="flux-dot" style="offset-path: path('M 60 30 H 240 V 120 H 60 Z');"></div>
+                            <div class="flux-dot" style="offset-path: path('M 60 30 H 240 V 120 H 60 Z'); animation-delay: 1s;"></div>
+                            <div class="flux-dot" style="offset-path: path('M 60 30 H 240 V 120 H 60 Z'); animation-delay: 2s;"></div>
+                        </div>
+                        <div class="caption">
+                            <strong>Figure 7.4 (Animated):</strong> Magnetic flux circulates through the soft-iron core, linking Primary (Amber) and Secondary (Green) coils.
+                        </div>
+                    </div>
+
+                    <p>Relation between Voltage (\( V \)), Current (\( I \)), and Turns (\( N \)):</p>
+                    <div class="formula-box">
+                        $$ \frac{V_s}{V_p} = \frac{N_s}{N_p} = \frac{I_p}{I_s} $$
+                    </div>
+                    
+                    <h3>Types</h3>
+                    <ul>
+                        <li><strong>Step-up:</strong> \( N_s > N_p \implies V_s > V_p \). (Increases Voltage, Decreases Current).</li>
+                        <li><strong>Step-down:</strong> \( N_s < N_p \implies V_s < V_p \). (Decreases Voltage, Increases Current).</li>
+                    </ul>
+                    
+                    <h3>Energy Losses</h3>
+                    <p>Flux Leakage, Resistance of windings (\( I^2R \)), Eddy Currents, Hysteresis.</p>
+                </section>
+                <div class="mt-10 pt-6 border-t border-white/10 text-center text-slate-500 text-sm">
+                    BRO YOU CAN AND YOU WILL ⚡
+                </div>
+            </div>
+        </div>
+
+        <div id="quiz-view" class="w-full max-w-4xl flex-col items-center animate-fade-in hidden pb-20">
+            <div class="w-full bg-[#1e293b] border border-white/5 rounded-2xl p-4 mb-6 flex justify-between items-center shadow-lg">
+                <h2 class="text-xl font-bold text-white">Physics Master Quiz</h2>
+                <div class="px-3 py-1 bg-black/30 rounded-lg border border-white/10 font-mono text-lg text-white" id="timer">15:00</div>
+            </div>
+
+            <div id="screen-start" class="w-full bg-[#0f172a] border border-white/5 rounded-2xl p-8 text-center shadow-lg flex flex-col items-center">
+                <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-cyan-600 to-blue-600 flex items-center justify-center mb-6 shadow-lg shadow-cyan-500/20">
+                    <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </div>
+                <h2 class="text-3xl font-bold text-white mb-2">Practice Quiz</h2>
+                <p class="text-slate-400 mb-8">15 Questions • 15 Minutes • Board Level MCQs</p>
+                <button onclick="quizApp.start()" class="px-8 py-3 rounded-xl bg-white text-black font-bold hover:scale-105 transition-transform">Start Now</button>
+            </div>
+
+            <div id="screen-quiz" class="w-full hidden flex-col">
+                <div class="mb-6">
+                    <div class="text-cyan-400 font-bold text-sm tracking-wider mb-2">QUESTION <span id="q-idx">1</span>/15</div>
+                    <div id="q-text" class="text-xl md:text-2xl font-bold text-white leading-relaxed">Loading...</div>
+                </div>
+                <div id="options-box" class="space-y-3 mb-8 w-full"></div>
+                <div class="flex justify-end">
+                    <button id="btn-next" onclick="quizApp.next()" disabled class="px-6 py-3 rounded-xl bg-cyan-600 text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-cyan-500 transition-colors">Next Question</button>
+                </div>
+            </div>
+
+            <div id="screen-result" class="w-full hidden flex-col">
+                <div class="bg-[#1e293b] border border-white/5 rounded-2xl p-6 mb-6 flex flex-col md:flex-row items-center justify-between gap-6 shadow-lg">
+                    <div class="text-center md:text-left">
+                        <p class="text-slate-400 text-xs uppercase tracking-widest font-bold mb-1">Total Score</p>
+                        <div class="text-5xl font-black text-white"><span id="score">0</span><span class="text-2xl text-slate-500">/15</span></div>
+                        <div id="score-text" class="text-green-400 font-bold mt-2">0% Accuracy</div>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <div class="pie-chart" id="chart-pie">
+                            <div class="pie-inner" id="pie-text">0%</div>
+                        </div>
+                    </div>
+                    <div class="flex gap-3">
+                        <button onclick="quizApp.start()" class="px-5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition-colors border border-white/10">Retake Quiz</button>
+                        <button onclick="exitQuiz()" class="px-5 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition-colors">Finish & Save</button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <div class="bg-[#1e293b] border border-white/5 rounded-2xl p-6 shadow-lg">
+                        <div class="text-slate-400 text-xs uppercase tracking-widest font-bold mb-4 flex items-center gap-2">
+                            <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z"></path></svg>
+                            Topic Wise Performance
+                        </div>
+                        <div id="chart-bars" class="space-y-4"></div>
+                    </div>
+
+                    <div class="bg-[#1e293b] border border-white/5 rounded-2xl p-6 shadow-lg">
+                        <div class="text-slate-400 text-xs uppercase tracking-widest font-bold mb-4 flex items-center gap-2">
+                            <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path></svg>
+                            Analysis Graph
+                        </div>
+                        <div id="topic-graph" class="graph-container">
+                        </div>
+                    </div>
+                </div>
+
+                <h3 class="text-xl font-bold text-white mb-4 pl-1 border-l-4 border-cyan-500">Detailed Review</h3>
+                <div id="review-box" class="space-y-4 w-full"></div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // --- 1. SMART PROGRESS TRACKING LOGIC (UPDATED FOR CHAPTER 7) ---
+        const KEY_PROGRESS = 'physics_chapter_7_progress'; 
+        const KEY_STATE = 'physics_chapter_7_state';       
+
+        const LOCK_TIME = 7200; // 2 HOURS
+        const INTERVAL_DURATION = 1800; // 30 Minutes
+
+        const DEFAULT_STATE = {
+            manual: false, // Worth 50%
+            test: false,   // Worth 20%
+            timeIntervals: 0, // Max 4, worth 7.5% each (Total 30%)
+            timeSpentSeconds: 0 
+        };
+        
+        let chapterState = { ...DEFAULT_STATE };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadState();
+            startTimer();
+            updateUI();
+            saveAndCalculate(); 
+        });
+
+        function loadState() {
+            const savedState = localStorage.getItem(KEY_STATE);
+            if (savedState) {
+                try {
+                    const parsed = JSON.parse(savedState);
+                    chapterState = { ...DEFAULT_STATE, ...parsed };
+                    if(typeof chapterState.timeIntervals !== 'number') chapterState.timeIntervals = 0;
+                    if(typeof chapterState.timeSpentSeconds !== 'number') chapterState.timeSpentSeconds = 0;
+                } catch(e) {
+                    console.error("State load error, resetting", e);
+                    chapterState = { ...DEFAULT_STATE };
+                }
+            }
+        }
+
+        function saveAndCalculate() {
+            localStorage.setItem(KEY_STATE, JSON.stringify(chapterState));
+            
+            // MATH: 50% + 20% + (4 * 7.5%) = 100%
+            let percent = 0;
+            if (chapterState.manual) percent += 50;
+            if (chapterState.test) percent += 20;
+            percent += (chapterState.timeIntervals * 7.5);
+
+            if (percent > 100) percent = 100; 
+            
+            const displayPercent = Math.floor(percent);
+
+            localStorage.setItem(KEY_PROGRESS, displayPercent.toString());
+
+            const indicator = document.getElementById('live-indicator');
+            const txt = document.getElementById('live-percent');
+            const bar = document.getElementById('visual-progress');
+            
+            if(txt) txt.innerText = `${displayPercent}%`;
+            if(bar) bar.style.width = `${displayPercent}%`;
+            
+            if (indicator) {
+                if (displayPercent === 100) {
+                    indicator.classList.remove('bg-orange-500', 'animate-pulse');
+                    indicator.classList.add('bg-green-500');
+                } else {
+                    indicator.classList.add('bg-orange-500', 'animate-pulse');
+                    indicator.classList.remove('bg-green-500');
+                }
+            }
+        }
+
+        function startTimer() {
+            setInterval(() => {
+                chapterState.timeSpentSeconds++;
+                
+                // 1. INTERVAL CHECK
+                let currentIntervals = Math.floor(chapterState.timeSpentSeconds / INTERVAL_DURATION);
+                if (currentIntervals > 4) currentIntervals = 4;
+
+                if (currentIntervals > chapterState.timeIntervals) {
+                    chapterState.timeIntervals = currentIntervals;
+                    saveAndCalculate();
+                    const status = document.getElementById('save-status');
+                    if(status) {
+                        status.innerText = `Progress Added (+7.5%)`;
+                        setTimeout(() => status.innerText = "Tracking Progress...", 3000);
+                    }
+                }
+
+                // 2. UNLOCK CHECK
+                const isLockedUI = document.getElementById('mark-btn-text').innerText.includes('Locked');
+                if (chapterState.timeSpentSeconds >= LOCK_TIME && isLockedUI) {
+                    updateUI(); 
+                    const status = document.getElementById('save-status');
+                    if(status) status.innerText = "Chapter Unlocked!";
+                }
+
+                if (chapterState.timeSpentSeconds % 10 === 0) {
+                    localStorage.setItem(KEY_STATE, JSON.stringify(chapterState));
+                }
+            }, 1000);
+        }
+
+        function toggleStatus() {
+            if (chapterState.timeSpentSeconds < LOCK_TIME && !chapterState.manual) {
+                alert("You must watch this lecture for at least 2 hours before marking it as complete.");
+                return;
+            }
+            chapterState.manual = !chapterState.manual; 
+            updateUI(); 
+            saveAndCalculate(); 
+        }
+
+        function updateUI() {
+            const btn = document.getElementById('mark-done-btn');
+            if(!btn) return;
+            
+            const icon = btn.querySelector('.check-icon');
+            const text = document.getElementById('mark-btn-text');
+            const circle = btn.querySelector('div');
+            const isLocked = chapterState.timeSpentSeconds < LOCK_TIME && !chapterState.manual;
+
+            if (chapterState.manual) {
+                btn.classList.remove('bg-slate-800', 'opacity-50', 'cursor-not-allowed');
+                btn.classList.add('bg-green-600', 'hover:bg-green-500', 'border-green-500', 'text-white');
+                circle.classList.remove('border-slate-400');
+                circle.classList.add('border-white', 'bg-white/20');
+                icon.classList.remove('opacity-0');
+                text.innerText = "Completed";
+            } else if (isLocked) {
+                btn.classList.add('bg-slate-800', 'opacity-50', 'cursor-not-allowed');
+                btn.classList.remove('bg-green-600', 'hover:bg-green-500', 'border-green-500', 'text-white');
+                circle.classList.add('border-slate-400');
+                circle.classList.remove('border-white', 'bg-white/20');
+                icon.classList.add('opacity-0');
+                text.innerText = "Locked (Studying...)";
+            } else {
+                btn.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-green-600');
+                btn.classList.add('bg-slate-800', 'hover:bg-slate-700');
+                circle.classList.add('border-slate-400');
+                icon.classList.add('opacity-0');
+                text.innerText = "Mark Complete";
+            }
+        }
+
+        function finishQuizInternal() {
+            if (!chapterState.test) {
+                chapterState.test = true;
+                saveAndCalculate();
+            }
+        }
+
+        const contentView = document.getElementById('content-view');
+        const quizView = document.getElementById('quiz-view');
+        const headerSub = document.getElementById('header-subtitle');
+        const quizBackBtn = document.getElementById('quiz-back-btn');
+        const saveStatus = document.getElementById('save-status');
+
+        function startQuiz() {
+            contentView.classList.add('hidden');
+            quizView.classList.remove('hidden');
+            quizView.classList.add('flex');
+            headerSub.innerText = "Quiz Mode";
+            quizBackBtn.classList.remove('hidden');
+            saveStatus.classList.add('hidden');
+            const iframe = document.getElementById('main-player');
+            const src = iframe.src;
+            iframe.src = ''; 
+            iframe.setAttribute('data-src', src); 
+        }
+
+        function exitQuiz() {
+            quizView.classList.add('hidden');
+            quizView.classList.remove('flex');
+            contentView.classList.remove('hidden');
+            headerSub.innerText = "Now Watching";
+            quizBackBtn.classList.add('hidden');
+            saveStatus.classList.remove('hidden');
+            const iframe = document.getElementById('main-player');
+            const savedSrc = iframe.getAttribute('data-src');
+            if(savedSrc) iframe.src = savedSrc;
+        }
+
+        // --- QUESTION DATA (From TEST.HTML) ---
+        const questions = [
+            {
+                id: 1,
+                text: "The relationship between RMS current (I) and peak current (i_m) for a sinusoidal AC is:",
+                options: ["I = i_m / 2", "I = i_m / √2", "I = √2 i_m", "I = 2 i_m"],
+                correct: 1,
+                topic: "RMS Values",
+                explanation: "The root mean square (rms) value of sinusoidal AC is I = i_m / √2 ≈ 0.707 i_m."
+            },
+            {
+                id: 2,
+                text: "In a pure inductive circuit, the current:",
+                options: ["Leads voltage by π/2", "Lags voltage by π/2", "Is in phase with voltage", "Leads voltage by π"],
+                correct: 1,
+                topic: "Inductive Circuit",
+                explanation: "In a pure inductor, current lags behind the voltage by a phase angle of π/2."
+            },
+            {
+                id: 3,
+                text: "The average power consumed in a purely inductive or purely capacitive circuit over a complete cycle is:",
+                options: ["Maximum", "Minimum", "Zero", "Infinite"],
+                correct: 2,
+                topic: "Power in AC",
+                explanation: "Since the phase difference φ is π/2, Power Factor cosφ = 0. Hence, average Power P = VI cosφ = 0."
+            },
+            {
+                id: 4,
+                text: "The resonant frequency (ω₀) of a series LCR circuit is given by:",
+                options: ["1/LC", "1/√(LC)", "√(LC)", "LC"],
+                correct: 1,
+                topic: "Resonance",
+                explanation: "Resonance occurs when X_L = X_C, i.e., ωL = 1/ωC, which gives ω₀ = 1/√(LC)."
+            },
+            {
+                id: 5,
+                text: "In a series LCR circuit, at resonance, the impedance (Z) is equal to:",
+                options: ["X_L", "X_C", "R", "Zero"],
+                correct: 2,
+                topic: "Resonance",
+                explanation: "At resonance, X_L = X_C, so the impedance Z = √(R² + (X_L - X_C)²) becomes Z = R (minimum)."
+            },
+            {
+                id: 6,
+                text: "The Power Factor of an AC circuit is defined as:",
+                options: ["sin φ", "tan φ", "cos φ", "cot φ"],
+                correct: 2,
+                topic: "Power Factor",
+                explanation: "The term cosφ is called the power factor, where φ is the phase difference between voltage and current."
+            },
+            {
+                id: 7,
+                text: "A transformer works on the principle of:",
+                options: ["Self Induction", "Mutual Induction", "Eddy Currents", "Resonance"],
+                correct: 1,
+                topic: "Transformer",
+                explanation: "A transformer operates on the principle of mutual induction between two coils (primary and secondary)."
+            },
+            {
+                id: 8,
+                text: "In a step-up transformer:",
+                options: ["Ns > Np and Vs > Vp", "Ns < Np and Vs < Vp", "Ns > Np and Vs < Vp", "Ns < Np and Vs > Vp"],
+                correct: 0,
+                topic: "Transformer",
+                explanation: "For a step-up transformer, secondary turns Ns > primary turns Np, resulting in secondary voltage Vs > Vp."
+            },
+            {
+                id: 9,
+                text: "The capacitive reactance (X_C) is given by:",
+                options: ["ωC", "1/ωC", "ω/C", "C/ω"],
+                correct: 1,
+                topic: "Capacitive Circuit",
+                explanation: "Capacitive reactance X_C = 1/(ωC). It is inversely proportional to frequency and capacitance."
+            },
+            {
+                id: 10,
+                text: "The phase difference between voltage and current in a pure resistive circuit is:",
+                options: ["π/2", "π", "Zero", "π/4"],
+                correct: 2,
+                topic: "Resistive Circuit",
+                explanation: "In a pure resistor, voltage and current are in phase, so the phase angle is zero."
+            },
+            {
+                id: 11,
+                text: "Quality Factor (Q) of a series LCR circuit is defined as:",
+                options: ["(1/R)√(L/C)", "R√(C/L)", "√(LC)/R", "L/R"],
+                correct: 0,
+                topic: "Quality Factor",
+                explanation: "The Q-factor determines sharpness of resonance: Q = (1/R)√(L/C)."
+            },
+            {
+                id: 12,
+                text: "High voltage transmission is used to:",
+                options: ["Increase current", "Reduce power loss", "Increase resistance", "Decrease voltage drop"],
+                correct: 1,
+                topic: "Power Transmission",
+                explanation: "Transmitting at high voltage reduces current (I = P/V), which significantly minimizes I²R heating losses."
+            },
+            {
+                id: 13,
+                text: "The peak voltage of an AC supply is 300 V. What is the rms voltage?",
+                options: ["212 V", "300 V", "424 V", "150 V"],
+                correct: 0,
+                topic: "RMS Values",
+                explanation: "V_rms = V_m / √2 = 300 / 1.414 ≈ 212 V."
+            },
+            {
+                id: 14,
+                text: "In an LCR circuit, if X_L > X_C, the circuit behaves as:",
+                options: ["Purely Resistive", "Inductive", "Capacitive", "Resonant"],
+                correct: 1,
+                topic: "LCR Circuit",
+                explanation: "If inductive reactance X_L is greater than capacitive reactance X_C, the net reactance is inductive, and current lags voltage."
+            },
+            {
+                id: 15,
+                text: "Wattless current flows in a circuit when the phase difference between voltage and current is:",
+                options: ["0", "π/2", "π/4", "π"],
+                correct: 1,
+                topic: "Wattless Current",
+                explanation: "If φ = π/2, Power Factor cosφ = 0, so Power P = 0. The current flowing is called wattless current."
+            }
+        ];
+
+        const quizApp = {
+            idx: 0, answers: Array(questions.length).fill(null), timer: 900, interval: null,
+
+            start: function() {
+                this.idx = 0; this.answers.fill(null); this.timer = 900;
+                document.getElementById('screen-start').classList.add('hidden');
+                document.getElementById('screen-result').classList.add('hidden');
+                document.getElementById('screen-result').classList.remove('flex');
+                const quizScreen = document.getElementById('screen-quiz');
+                quizScreen.classList.remove('hidden');
+                quizScreen.classList.add('flex');
+                this.renderQ();
+                this.startTimer();
+            },
+
+            startTimer: function() {
+                clearInterval(this.interval);
+                this.interval = setInterval(() => {
+                    if(this.timer <= 0) { this.finish(); return; }
+                    this.timer--;
+                    const m = Math.floor(this.timer / 60);
+                    const s = this.timer % 60;
+                    document.getElementById('timer').innerText = `${m}:${s < 10 ? '0'+s : s}`;
+                }, 1000);
+            },
+
+            renderQ: function() {
+                const q = questions[this.idx];
+                document.getElementById('q-idx').innerText = this.idx + 1;
+                document.getElementById('q-text').innerText = q.text;
+                const box = document.getElementById('options-box');
+                box.innerHTML = '';
+                const nextBtn = document.getElementById('btn-next');
+                nextBtn.disabled = true;
+                nextBtn.innerText = (this.idx === questions.length - 1) ? "Submit Quiz" : "Next Question";
+
+                q.options.forEach((opt, i) => {
+                    const div = document.createElement('div');
+                    div.className = 'quiz-option';
+                    div.innerHTML = `<div class="quiz-circle"></div><span class="text-slate-300 font-medium">${opt}</span>`;
+                    div.onclick = () => this.select(i, div);
+                    box.appendChild(div);
+                });
+            },
+
+            select: function(optIdx, el) {
+                this.answers[this.idx] = optIdx;
+                document.querySelectorAll('.quiz-option').forEach(x => x.classList.remove('selected'));
+                el.classList.add('selected');
+                document.getElementById('btn-next').disabled = false;
+            },
+
+            next: function() {
+                if(this.idx < questions.length - 1) { this.idx++; this.renderQ(); } 
+                else { this.finish(); }
+            },
+
+            finish: function() {
+                clearInterval(this.interval);
+                let correctCount = 0;
+                let topicStats = {};
+
+                questions.forEach((q, i) => {
+                    const isCorrect = (this.answers[i] === q.correct);
+                    if(isCorrect) correctCount++;
+                    if(!topicStats[q.topic]) topicStats[q.topic] = { total: 0, right: 0 };
+                    topicStats[q.topic].total++;
+                    if(isCorrect) topicStats[q.topic].right++;
+                });
+
+                document.getElementById('screen-quiz').classList.add('hidden');
+                document.getElementById('screen-quiz').classList.remove('flex');
+                const resultScreen = document.getElementById('screen-result');
+                resultScreen.classList.remove('hidden');
+                resultScreen.classList.add('flex');
+
+                document.getElementById('score').innerText = correctCount;
+                const pct = Math.round((correctCount / questions.length) * 100);
+                document.getElementById('score-text').innerText = `${pct}% Accuracy`;
+                const deg = (correctCount / questions.length) * 360;
+                document.getElementById('chart-pie').style.background = `conic-gradient(#22c55e 0deg ${deg}deg, #ef4444 ${deg}deg 360deg)`;
+                document.getElementById('pie-text').innerText = `${pct}%`;
+
+                const barBox = document.getElementById('chart-bars');
+                const graphBox = document.getElementById('topic-graph');
+                barBox.innerHTML = '';
+                graphBox.innerHTML = '';
+
+                for (const [topic, data] of Object.entries(topicStats)) {
+                    const topicPct = Math.round((data.right / data.total) * 100);
+                    barBox.innerHTML += `
+                        <div class="text-sm">
+                            <div class="flex justify-between text-slate-400 mb-1">
+                                <span class="font-medium text-white">${topic}</span>
+                                <span>${data.right}/${data.total}</span>
+                            </div>
+                            <div class="bar-bg"><div class="bar-fill" style="width: ${topicPct}%"></div></div>
+                        </div>`;
+                    graphBox.innerHTML += `
+                        <div class="graph-bar-group">
+                            <div class="graph-bar" style="height: ${topicPct}%;">
+                                <div class="graph-value">${topicPct}%</div>
+                            </div>
+                            <div class="graph-label">${topic}</div>
+                        </div>`;
+                }
+
+                finishQuizInternal(); 
+
+                const reviewBox = document.getElementById('review-box');
+                reviewBox.innerHTML = '';
+                questions.forEach((q, i) => {
+                    const isRight = (this.answers[i] === q.correct);
+                    reviewBox.innerHTML += `
+                        <div class="p-4 rounded-xl border border-white/5 bg-[#1e293b] ${isRight ? 'border-l-4 border-l-green-500' : 'border-l-4 border-l-red-500'}">
+                            <p class="font-bold text-white mb-2 text-base">Q${i+1}: ${q.text}</p>
+                            <div class="text-sm mb-2"><span class="${isRight ? 'text-green-400' : 'text-red-400'}">Answer: ${this.answers[i]!==null?q.options[this.answers[i]]:'Skipped'}</span></div>
+                            <div class="text-xs text-slate-400">${q.explanation}</div>
+                        </div>`;
+                });
+            }
+        };
+    </script>
+</body>
+</html>

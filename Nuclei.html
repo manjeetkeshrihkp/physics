@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lecture Player | JEE Matrix</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=Merriweather:ital,wght@0,300;0,400;0,700;1,400&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { 
+                        sans: ['Inter', 'sans-serif'],
+                        serif: ['Merriweather', 'serif'],
+                    },
+                    colors: { background: '#020617' },
+                    animation: { 'fade-in': 'fadeIn 0.5s ease-out forwards' },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0', transform: 'translateY(10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #020617;
+            color: #f8fafc;
+            background-image: linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            min-height: 100vh;
+        }
+
+        /* Video Container (16:9) */
+        .video-container {
+            position: relative;
+            padding-bottom: 56.25%;
+            height: 0;
+            overflow: hidden;
+            background: #000;
+            border-radius: 16px;
+            box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .video-container iframe {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        /* Notes Specific Styles */
+        .notes-content p, .notes-content li {
+            font-family: 'Merriweather', serif;
+            color: #cbd5e1;
+            line-height: 1.8;
+            margin-bottom: 1rem;
+        }
+        .notes-content h2 {
+            font-family: 'Inter', sans-serif;
+            color: #ef4444; /* Red-500 */
+            font-weight: 700;
+            font-size: 1.5rem;
+            margin-top: 3rem;
+            margin-bottom: 1rem;
+            border-left: 4px solid #b91c1c; /* Red-700 */
+            padding-left: 1rem;
+        }
+        .notes-content h3 {
+            font-family: 'Inter', sans-serif;
+            color: #f8fafc;
+            font-weight: 600;
+            font-size: 1.25rem;
+            margin-top: 2rem;
+            margin-bottom: 0.75rem;
+        }
+        .notes-content strong { color: #fff; }
+        .notes-content ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1.5rem; }
+        .notes-content ol { list-style-type: decimal; padding-left: 1.5rem; margin-bottom: 1.5rem; }
+        
+        .formula-box {
+            background-color: #1e293b;
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin: 1.5rem 0;
+            text-align: center;
+            font-family: 'Inter', sans-serif;
+            overflow-x: auto;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+
+        .note-highlight {
+            background-color: rgba(239, 68, 68, 0.1); 
+            border-left: 4px solid #ef4444;
+            padding: 1rem 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 0 8px 8px 0;
+            font-style: italic;
+        }
+
+        /* --- CHAPTER 13 ANIMATIONS (Ported from Nuclei.html) --- */
+        .diagram-container {
+            background-color: #0f172a;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 30px;
+            margin: 2rem 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            text-align: center;
+        }
+        .caption { margin-top: 15px; font-size: 0.85rem; color: #94a3b8; font-family: 'Inter', sans-serif; font-weight: bold; }
+
+        /* Animation 1: Nucleus Composition */
+        .nucleus-box { width: 200px; height: 200px; position: relative; display: flex; align-items: center; justify-content: center; }
+        .nucleon {
+            width: 20px; height: 20px; border-radius: 50%; position: absolute;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5); animation: vibrate 0.5s infinite alternate;
+        }
+        .p { background-color: #ef4444; } .n { background-color: #94a3b8; }
+        @keyframes vibrate { 0% { transform: translate(0,0); } 100% { transform: translate(1px, 1px); } }
+
+        /* Animation 2: Binding Energy Curve */
+        .graph-box { width: 300px; height: 200px; position: relative; border-left: 2px solid #cbd5e1; border-bottom: 2px solid #cbd5e1; }
+        .be-curve {
+            position: absolute; width: 100%; height: 100%; fill: none; stroke: #ef4444; stroke-width: 3;
+            stroke-dasharray: 400; stroke-dashoffset: 400; animation: drawCurve 3s forwards ease-out;
+        }
+        .region-label { position: absolute; font-size: 0.7rem; color: #94a3b8; }
+        @keyframes drawCurve { to { stroke-dashoffset: 0; } }
+
+        /* Animation 3: Radioactive Decay */
+        .decay-box { width: 300px; height: 150px; display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; align-content: center; }
+        .atom-dot { width: 10px; height: 10px; background-color: #ef4444; border-radius: 50%; transition: background-color 0.5s; }
+        .decay-1 { animation: turnGray 0.5s forwards 1s; } .decay-2 { animation: turnGray 0.5s forwards 2s; }
+        .decay-3 { animation: turnGray 0.5s forwards 3s; } .decay-4 { animation: turnGray 0.5s forwards 4s; }
+        @keyframes turnGray { to { background-color: #475569; transform: scale(0.8); } }
+
+        /* Animation 4: Nuclear Fission */
+        .fission-box { width: 300px; height: 200px; position: relative; }
+        .u235 {
+            width: 40px; height: 40px; background-color: #ef4444; border-radius: 50%; position: absolute;
+            top: 80px; left: 130px; animation: split 2s forwards 1s;
+        }
+        .neutron-bullet {
+            width: 10px; height: 10px; background-color: #94a3b8; border-radius: 50%; position: absolute;
+            top: 95px; left: 0; animation: shoot 1s linear forwards;
+        }
+        .fragment { width: 25px; height: 25px; background-color: #f87171; border-radius: 50%; position: absolute; opacity: 0; }
+        .frag-1 { top: 60px; left: 130px; animation: fragMove1 1s forwards 2s; }
+        .frag-2 { top: 100px; left: 130px; animation: fragMove2 1s forwards 2s; }
+        @keyframes shoot { 0% { left: 0; } 100% { left: 130px; opacity: 0; } }
+        @keyframes split { 0% { transform: scale(1); } 50% { transform: scale(1.2) skew(10deg); } 99% { opacity: 1; transform: scale(0); } 100% { opacity: 0; } }
+        @keyframes fragMove1 { 0% { opacity: 1; } 100% { top: 20px; left: 200px; opacity: 1; } }
+        @keyframes fragMove2 { 0% { opacity: 1; } 100% { top: 140px; left: 200px; opacity: 1; } }
+
+        /* Quiz Specifics */
+        .quiz-option {
+            background: #1e293b;
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 1rem 1.25rem;
+            border-radius: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .quiz-option:hover { background: #334155; }
+        .quiz-option.selected { background: rgba(239, 68, 68, 0.2); border-color: #ef4444; }
+        .quiz-circle { width: 20px; height: 20px; border: 2px solid #64748b; border-radius: 50%; flex-shrink: 0; }
+        .quiz-option.selected .quiz-circle { border-color: #ef4444; background: #ef4444; }
+
+        /* Pie Chart */
+        .pie-chart {
+            width: 120px; height: 120px; border-radius: 50%;
+            margin: 15px 0;
+            background: conic-gradient(#22c55e 0deg, #ef4444 0deg);
+            position: relative;
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+        }
+        .pie-inner {
+            position: absolute; top: 15px; left: 15px;
+            width: 90px; height: 90px;
+            background: #1e293b; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; color: #fff;
+        }
+
+        /* Graph Container */
+        .graph-container {
+            height: 160px;
+            padding-top: 25px;
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+            padding-bottom: 5px;
+            border-bottom: 2px solid rgba(255,255,255,0.1);
+            margin-top: 20px;
+            overflow-x: auto;
+            width: 100%;
+            padding-right: 10px;
+        }
+        .graph-bar-group {
+            flex: 0 0 auto;
+            min-width: 45px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100%;
+            justify-content: flex-end;
+        }
+        .graph-bar {
+            width: 100%;
+            background: linear-gradient(to top, #b91c1c, #ef4444);
+            border-radius: 4px 4px 0 0;
+            transition: height 1s ease-out;
+            position: relative;
+            min-height: 4px;
+        }
+        .graph-label {
+            margin-top: 8px; font-size: 0.65rem; color: #94a3b8;
+            text-align: center; width: 100%; white-space: nowrap;
+            overflow: hidden; text-overflow: ellipsis;
+        }
+        .graph-value {
+            position: absolute; top: -18px; left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.65rem; color: #fff; font-weight: bold;
+        }
+        .bar-bg { background: rgba(255,255,255,0.05); height: 6px; border-radius: 99px; overflow: hidden; }
+        .bar-fill { height: 100%; background: #ef4444; transition: width 1s ease; }
+    </style>
+</head>
+<body class="flex flex-col h-screen overflow-hidden">
+
+    <header class="h-16 border-b border-white/5 bg-[#020617]/90 backdrop-blur-md flex items-center justify-between px-6 z-[100] flex-shrink-0 relative">
+        <div class="flex items-center gap-4">
+            <a href="physics.html" class="w-10 h-10 rounded-full hover:bg-white/5 flex items-center justify-center text-slate-400 hover:text-white transition-all group cursor-pointer" title="Back to Chapters">
+                <svg class="w-5 h-5 group-hover:-translate-x-1 transition-transform pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+            </a>
+            <div>
+                <p class="text-[10px] uppercase tracking-widest text-red-400 font-bold" id="header-subtitle">Now Watching</p>
+                <h1 id="header-title" class="text-sm md:text-base font-bold text-white truncate max-w-[200px] md:max-w-md">Nuclei</h1>
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+            <button id="quiz-back-btn" onclick="exitQuiz()" class="hidden px-3 py-1.5 text-xs font-bold bg-white/10 hover:bg-white/20 rounded-lg text-white transition-colors border border-white/10">
+                Back to Lecture
+            </button>
+            <span class="text-xs text-slate-500 font-medium hidden md:block" id="save-status">Tracking Progress...</span>
+            <div class="flex items-center gap-2 bg-slate-800 px-3 py-1 rounded-full border border-white/10">
+                 <div class="w-2 h-2 rounded-full bg-orange-500 animate-pulse" id="live-indicator"></div>
+                 <span class="text-xs font-bold text-white" id="live-percent">0%</span>
+            </div>
+        </div>
+        <div id="visual-progress" class="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-red-500 to-orange-500 transition-all duration-700 ease-in-out shadow-[0_0_10px_rgba(239,68,68,0.5)]" style="width: 0%"></div>
+    </header>
+
+    <main class="flex-grow overflow-y-auto p-4 md:p-8 flex flex-col items-center relative">
+        
+        <div id="content-view" class="w-full max-w-4xl animate-fade-in pb-20">
+            
+            <div class="video-container mb-6">
+                <iframe id="main-player" src="https://www.youtube.com/embed/mwFzUv_ye5I?autoplay=0&rel=0&modestbranding=1" title="Video Player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+            </div>
+
+            <div class="flex flex-col md:flex-row items-center justify-between gap-4 p-6 bg-[#0f172a] border border-white/5 rounded-2xl shadow-lg mb-10">
+                <div class="w-full md:w-auto">
+                    <h2 id="video-title" class="text-2xl font-bold text-white mb-1">Nuclei</h2>
+                    <p class="text-slate-400 text-sm">Physics • Class 12 • Chapter 13</p>
+                </div>
+                <div class="flex items-center gap-3 w-full md:w-auto">
+                    <button id="mark-done-btn" onclick="toggleStatus()" class="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-slate-800 border border-slate-600 transition-all text-sm font-semibold text-slate-200 group cursor-not-allowed opacity-50">
+                        <div class="w-5 h-5 rounded-full border-2 border-slate-400 group-hover:border-white flex items-center justify-center">
+                            <svg class="w-3 h-3 text-white opacity-0 transition-opacity check-icon" fill="currentColor" viewBox="0 0 20 20"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"></path></svg>
+                        </div>
+                        <span class="btn-text" id="mark-btn-text">Locked (Studying...)</span>
+                    </button>
+                    
+                    <button onclick="startQuiz()" class="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 text-white font-bold shadow-lg shadow-red-500/20 hover:shadow-red-500/40 hover:-translate-y-0.5 transition-all group">
+                        <span>Take Test</span>
+                        <svg class="w-5 h-5 group-hover:rotate-6 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                    </button>
+                </div>
+            </div>
+
+            <div id="detailed-notes" class="notes-content">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="h-8 w-1 bg-red-500 rounded-full"></div>
+                    <h2 class="!m-0 !border-0 !p-0 text-3xl text-white">Detailed Physics Notes</h2>
+                </div>
+                
+                <p class="text-slate-400 italic mb-8">Comprehensive notes based on NCERT Class 12 Physics - Chapter 13</p>
+
+                <section id="intro">
+                    <h2>1. Introduction</h2>
+                    <p>The nucleus is the central core of an atom where 99.9% of the atom's mass and all of its positive charge are concentrated. Despite containing nearly all the mass, the nucleus is extremely small compared to the atom (\(10^{-12}\) times the volume).</p>
+                </section>
+
+                <section id="composition">
+                    <h2>2. Atomic Masses and Composition</h2>
+                    <p><strong>Atomic Mass Unit (u):</strong> Defined as \(1/12^{th}\) of the mass of a Carbon-12 atom.
+                        $$ 1u = 1.660539 \times 10^{-27} \, \text{kg} $$
+                    </p>
+                    
+                    <h3>Composition</h3>
+                    <p>The nucleus consists of <strong>Nucleons</strong>: Protons (positively charged) and Neutrons (neutral).</p>
+                    <div class="diagram-container">
+                        <div class="nucleus-box">
+                            <div class="nucleon p" style="top:90px; left:90px;"></div>
+                            <div class="nucleon n" style="top:80px; left:105px;"></div>
+                            <div class="nucleon p" style="top:100px; left:100px;"></div>
+                            <div class="nucleon n" style="top:95px; left:80px;"></div>
+                            <div class="nucleon p" style="top:85px; left:85px; z-index:2;"></div>
+                            <div class="nucleon n" style="top:105px; left:95px;"></div>
+                        </div>
+                        <div class="caption">
+                            <strong>Figure 13.1 (Animated):</strong> A nucleus composed of vibrating Protons (Red) and Neutrons (Gray) held by nuclear force.
+                        </div>
+                    </div>
+
+                    <ul>
+                        <li><strong>Atomic Number (\(Z\)):</strong> Number of Protons.</li>
+                        <li><strong>Neutron Number (\(N\)):</strong> Number of Neutrons.</li>
+                        <li><strong>Mass Number (\(A\)):</strong> Total number of nucleons (\(A = Z + N\)).</li>
+                        <li><strong>Notation:</strong> \({}_{Z}^{A}X\) (e.g., \({}_{79}^{197}\text{Au}\) denotes Gold).</li>
+                        <li><strong>Isotopes:</strong> Same \(Z\), different \(N\) (e.g., Deuterium, Tritium).</li>
+                        <li><strong>Isobars:</strong> Same \(A\), different \(Z\).</li>
+                        <li><strong>Isotones:</strong> Same \(N\), different \(Z\).</li>
+                    </ul>
+                </section>
+
+                <section id="size">
+                    <h2>3. Size of the Nucleus</h2>
+                    <p>Experiments on alpha-particle scattering revealed that the volume of the nucleus is proportional to its mass number \(A\). Thus, the radius \(R\) is:</p>
+                    <div class="formula-box">
+                        $$ R = R_0 A^{1/3} $$
+                    </div>
+                    <p>Where \(R_0 = 1.2 \times 10^{-15} \, \text{m} = 1.2 \, \text{fm}\). This implies that <strong>Nuclear Density</strong> is constant and independent of \(A\) (approx. \(2.3 \times 10^{17} \, \text{kg/m}^3\)).</p>
+                </section>
+
+                <section id="binding">
+                    <h2>4. Mass-Energy and Nuclear Binding Energy</h2>
+                    
+                    <h3>Mass-Energy Equivalence</h3>
+                    <p>Einstein proved that mass is a form of energy.
+                        $$ E = mc^2 $$
+                    </p>
+
+                    <h3>Mass Defect (\(\Delta M\))</h3>
+                    <p>The mass of a nucleus is always <strong>less</strong> than the sum of the masses of its constituent protons and neutrons. The difference is the mass defect:
+                        $$ \Delta M = [Z m_p + (A-Z) m_n] - M $$
+                    </p>
+
+                    <h3>Binding Energy (\(E_b\))</h3>
+                    <p>The energy equivalent to the mass defect. It is the energy required to break the nucleus into its constituent nucleons.
+                        $$ E_b = \Delta M c^2 $$
+                    </p>
+
+                    <div class="diagram-container">
+                        <div class="graph-box">
+                            <svg viewBox="0 0 300 200" class="be-curve">
+                                <path d="M 10 180 Q 30 20, 80 20 T 280 40" fill="none" stroke="#ef4444" stroke-width="3" />
+                            </svg>
+                            <div style="position:absolute; bottom:0; left:0; width:100%; height:1px; background:white;"></div> <div style="position:absolute; top:0; left:0; width:1px; height:100%; background:white;"></div> <div class="region-label" style="top:150px; left:20px;">Fusion</div>
+                            <div class="region-label" style="top:10px; left:80px;">Fe (Peak Stability)</div>
+                            <div class="region-label" style="top:50px; right:20px;">Fission</div>
+                        </div>
+                        <div class="caption">
+                            <strong>Figure 13.2 (Animated):</strong> Binding Energy per Nucleon (\(E_{bn}\)) vs Mass Number (\(A\)). Iron (Fe) is most stable.
+                        </div>
+                    </div>
+
+                    <ul>
+                        <li>\(E_{bn}\) is practically constant (~8 MeV) for \(30 < A < 170\).</li>
+                        <li>\(E_{bn}\) is lower for light nuclei (\(A<30\)) and heavy nuclei (\(A>170\)).</li>
+                        <li>This curve explains why energy is released in <strong>Nuclear Fission</strong> (heavy nuclei splitting) and <strong>Nuclear Fusion</strong> (light nuclei combining).</li>
+                    </ul>
+                </section>
+
+                <section id="force">
+                    <h2>5. Nuclear Force</h2>
+                    <p>The strong force that binds nucleons together in the nucleus.</p>
+                    <ul>
+                        <li><strong>Short Range:</strong> Operates only up to ~3 fm.</li>
+                        <li><strong>Strongest Force:</strong> Much stronger than Coulomb repulsion between protons.</li>
+                        <li><strong>Charge Independent:</strong> Force between p-p, n-n, and p-n is approximately the same.</li>
+                        <li><strong>Saturation:</strong> Nucleons only interact with nearest neighbors.</li>
+                    </ul>
+                </section>
+
+                <section id="radioactivity">
+                    <h2>6. Radioactivity</h2>
+                    <p>The spontaneous emission of radiation by unstable nuclei.</p>
+
+                    <h3>Law of Radioactive Decay</h3>
+                    <p>The rate of decay is proportional to the number of undecayed nuclei \(N\) present.
+                        $$ \frac{dN}{dt} = -\lambda N $$
+                        $$ N(t) = N_0 e^{-\lambda t} $$
+                    </p>
+                    <p>Where \(\lambda\) is the decay constant.</p>
+
+                    <div class="diagram-container">
+                        <div class="decay-box">
+                            <div class="atom-dot decay-1"></div> <div class="atom-dot"></div> <div class="atom-dot decay-2"></div> <div class="atom-dot"></div>
+                            <div class="atom-dot"></div> <div class="atom-dot decay-3"></div> <div class="atom-dot"></div> <div class="atom-dot decay-4"></div>
+                            <div class="atom-dot decay-1"></div> <div class="atom-dot"></div> <div class="atom-dot decay-2"></div> <div class="atom-dot"></div>
+                        </div>
+                        <div class="caption">
+                            <strong>Figure 13.3 (Animated):</strong> Radioactive sample decaying over time.
+                        </div>
+                    </div>
+
+                    <h3>Half-Life (\(T_{1/2}\))</h3>
+                    <p>Time required for the number of nuclei to reduce to half its initial value.
+                        $$ T_{1/2} = \frac{\ln 2}{\lambda} = \frac{0.693}{\lambda} $$
+                    </p>
+                    
+                    <h3>Types of Decay</h3>
+                    <ul>
+                        <li><strong>Alpha (\(\alpha\)) Decay:</strong> Emission of Helium nucleus (\({}_2^4\text{He}\)). Mass number decreases by 4, Atomic number by 2.</li>
+                        <li><strong>Beta (\(\beta\)) Decay:</strong> Emission of electron (\(\beta^-\)) or positron (\(\beta^+\)). Neutrons convert to protons or vice versa.</li>
+                        <li><strong>Gamma (\(\gamma\)) Decay:</strong> Emission of high-energy photons from an excited nucleus. No change in \(A\) or \(Z\).</li>
+                    </ul>
+                </section>
+
+                <section id="energy">
+                    <h2>7. Nuclear Energy</h2>
+                    
+                    <h3>Nuclear Fission</h3>
+                    <p>A heavy nucleus (like Uranium-235) splits into two lighter nuclei when bombarded by a neutron, releasing massive energy and more neutrons.</p>
+                    <div class="formula-box">
+                        $$ {}_0^1\text{n} + {}_{92}^{235}\text{U} \rightarrow {}_{56}^{144}\text{Ba} + {}_{36}^{89}\text{Kr} + 3 {}_0^1\text{n} + \text{Energy} $$
+                    </div>
+
+                    <div class="diagram-container">
+                        <div class="fission-box">
+                            <div class="neutron-bullet"></div>
+                            <div class="u235"></div>
+                            <div class="fragment frag-1"></div>
+                            <div class="fragment frag-2"></div>
+                        </div>
+                        <div class="caption">
+                            <strong>Figure 13.4 (Animated):</strong> A neutron strikes a Uranium nucleus, causing it to split into fragments and release energy.
+                        </div>
+                    </div>
+
+                    <h3>Nuclear Fusion</h3>
+                    <p>Two light nuclei combine to form a heavier nucleus, releasing energy. This is the source of energy in stars (e.g., the Sun).
+                        $$ {}_1^1\text{H} + {}_1^1\text{H} \rightarrow {}_1^2\text{H} + e^+ + \nu + \text{Energy} $$
+                    </p>
+                    <p>Fusion requires extremely high temperatures (Thermonuclear Fusion) to overcome Coulomb repulsion.</p>
+                </section>
+                <div class="mt-10 pt-6 border-t border-white/10 text-center text-slate-500 text-sm">
+                    BRO YOU CAN AND YOU WILL ⚡
+                </div>
+            </div>
+        </div>
+
+        <div id="quiz-view" class="w-full max-w-4xl flex-col items-center animate-fade-in hidden pb-20">
+            <div class="w-full bg-[#1e293b] border border-white/5 rounded-2xl p-4 mb-6 flex justify-between items-center shadow-lg">
+                <h2 class="text-xl font-bold text-white">Physics Master Quiz</h2>
+                <div class="px-3 py-1 bg-black/30 rounded-lg border border-white/10 font-mono text-lg text-white" id="timer">15:00</div>
+            </div>
+
+            <div id="screen-start" class="w-full bg-[#0f172a] border border-white/5 rounded-2xl p-8 text-center shadow-lg flex flex-col items-center">
+                <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-red-600 to-orange-600 flex items-center justify-center mb-6 shadow-lg shadow-red-500/20">
+                    <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </div>
+                <h2 class="text-3xl font-bold text-white mb-2">Practice Quiz</h2>
+                <p class="text-slate-400 mb-8">15 Questions • 15 Minutes • Board Level MCQs</p>
+                <button onclick="quizApp.start()" class="px-8 py-3 rounded-xl bg-white text-black font-bold hover:scale-105 transition-transform">Start Now</button>
+            </div>
+
+            <div id="screen-quiz" class="w-full hidden flex-col">
+                <div class="mb-6">
+                    <div class="text-red-400 font-bold text-sm tracking-wider mb-2">QUESTION <span id="q-idx">1</span>/15</div>
+                    <div id="q-text" class="text-xl md:text-2xl font-bold text-white leading-relaxed">Loading...</div>
+                </div>
+                <div id="options-box" class="space-y-3 mb-8 w-full"></div>
+                <div class="flex justify-end">
+                    <button id="btn-next" onclick="quizApp.next()" disabled class="px-6 py-3 rounded-xl bg-red-600 text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-red-500 transition-colors">Next Question</button>
+                </div>
+            </div>
+
+            <div id="screen-result" class="w-full hidden flex-col">
+                <div class="bg-[#1e293b] border border-white/5 rounded-2xl p-6 mb-6 flex flex-col md:flex-row items-center justify-between gap-6 shadow-lg">
+                    <div class="text-center md:text-left">
+                        <p class="text-slate-400 text-xs uppercase tracking-widest font-bold mb-1">Total Score</p>
+                        <div class="text-5xl font-black text-white"><span id="score">0</span><span class="text-2xl text-slate-500">/15</span></div>
+                        <div id="score-text" class="text-green-400 font-bold mt-2">0% Accuracy</div>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <div class="pie-chart" id="chart-pie">
+                            <div class="pie-inner" id="pie-text">0%</div>
+                        </div>
+                    </div>
+                    <div class="flex gap-3">
+                        <button onclick="quizApp.start()" class="px-5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition-colors border border-white/10">Retake Quiz</button>
+                        <button onclick="exitQuiz()" class="px-5 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-bold transition-colors">Finish & Save</button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <div class="bg-[#1e293b] border border-white/5 rounded-2xl p-6 shadow-lg">
+                        <div class="text-slate-400 text-xs uppercase tracking-widest font-bold mb-4 flex items-center gap-2">
+                            <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z"></path></svg>
+                            Topic Wise Performance
+                        </div>
+                        <div id="chart-bars" class="space-y-4"></div>
+                    </div>
+
+                    <div class="bg-[#1e293b] border border-white/5 rounded-2xl p-6 shadow-lg">
+                        <div class="text-slate-400 text-xs uppercase tracking-widest font-bold mb-4 flex items-center gap-2">
+                            <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path></svg>
+                            Analysis Graph
+                        </div>
+                        <div id="topic-graph" class="graph-container">
+                        </div>
+                    </div>
+                </div>
+
+                <h3 class="text-xl font-bold text-white mb-4 pl-1 border-l-4 border-red-500">Detailed Review</h3>
+                <div id="review-box" class="space-y-4 w-full"></div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // --- 1. SMART PROGRESS TRACKING LOGIC (UPDATED FOR CHAPTER 13) ---
+        const KEY_PROGRESS = 'physics_chapter_13_progress'; 
+        const KEY_STATE = 'physics_chapter_13_state';       
+
+        const LOCK_TIME = 3500; // 2 HOURS
+        const INTERVAL_DURATION = 1000; // 30 Minutes
+
+        const DEFAULT_STATE = {
+            manual: false, // Worth 50%
+            test: false,   // Worth 20%
+            timeIntervals: 0, // Max 4, worth 7.5% each (Total 30%)
+            timeSpentSeconds: 0 
+        };
+        
+        let chapterState = { ...DEFAULT_STATE };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadState();
+            startTimer();
+            updateUI();
+            saveAndCalculate(); 
+        });
+
+        function loadState() {
+            const savedState = localStorage.getItem(KEY_STATE);
+            if (savedState) {
+                try {
+                    const parsed = JSON.parse(savedState);
+                    chapterState = { ...DEFAULT_STATE, ...parsed };
+                    if(typeof chapterState.timeIntervals !== 'number') chapterState.timeIntervals = 0;
+                    if(typeof chapterState.timeSpentSeconds !== 'number') chapterState.timeSpentSeconds = 0;
+                } catch(e) {
+                    console.error("State load error, resetting", e);
+                    chapterState = { ...DEFAULT_STATE };
+                }
+            }
+        }
+
+        function saveAndCalculate() {
+            localStorage.setItem(KEY_STATE, JSON.stringify(chapterState));
+            
+            // MATH: 50% + 20% + (4 * 7.5%) = 100%
+            let percent = 0;
+            if (chapterState.manual) percent += 50;
+            if (chapterState.test) percent += 20;
+            percent += (chapterState.timeIntervals * 7.5);
+
+            if (percent > 100) percent = 100; 
+            
+            const displayPercent = Math.floor(percent);
+
+            localStorage.setItem(KEY_PROGRESS, displayPercent.toString());
+
+            const indicator = document.getElementById('live-indicator');
+            const txt = document.getElementById('live-percent');
+            const bar = document.getElementById('visual-progress');
+            
+            if(txt) txt.innerText = `${displayPercent}%`;
+            if(bar) bar.style.width = `${displayPercent}%`;
+            
+            if (indicator) {
+                if (displayPercent === 100) {
+                    indicator.classList.remove('bg-orange-500', 'animate-pulse');
+                    indicator.classList.add('bg-green-500');
+                } else {
+                    indicator.classList.add('bg-orange-500', 'animate-pulse');
+                    indicator.classList.remove('bg-green-500');
+                }
+            }
+        }
+
+        function startTimer() {
+            setInterval(() => {
+                chapterState.timeSpentSeconds++;
+                
+                // 1. INTERVAL CHECK
+                let currentIntervals = Math.floor(chapterState.timeSpentSeconds / INTERVAL_DURATION);
+                if (currentIntervals > 4) currentIntervals = 4;
+
+                if (currentIntervals > chapterState.timeIntervals) {
+                    chapterState.timeIntervals = currentIntervals;
+                    saveAndCalculate();
+                    const status = document.getElementById('save-status');
+                    if(status) {
+                        status.innerText = `Progress Added (+7.5%)`;
+                        setTimeout(() => status.innerText = "Tracking Progress...", 3000);
+                    }
+                }
+
+                // 2. UNLOCK CHECK
+                const isLockedUI = document.getElementById('mark-btn-text').innerText.includes('Locked');
+                if (chapterState.timeSpentSeconds >= LOCK_TIME && isLockedUI) {
+                    updateUI(); 
+                    const status = document.getElementById('save-status');
+                    if(status) status.innerText = "Chapter Unlocked!";
+                }
+
+                if (chapterState.timeSpentSeconds % 10 === 0) {
+                    localStorage.setItem(KEY_STATE, JSON.stringify(chapterState));
+                }
+            }, 1000);
+        }
+
+        function toggleStatus() {
+            if (chapterState.timeSpentSeconds < LOCK_TIME && !chapterState.manual) {
+                alert("You must watch this lecture for at least 2 hours before marking it as complete.");
+                return;
+            }
+            chapterState.manual = !chapterState.manual; 
+            updateUI(); 
+            saveAndCalculate(); 
+        }
+
+        function updateUI() {
+            const btn = document.getElementById('mark-done-btn');
+            if(!btn) return;
+            
+            const icon = btn.querySelector('.check-icon');
+            const text = document.getElementById('mark-btn-text');
+            const circle = btn.querySelector('div');
+            const isLocked = chapterState.timeSpentSeconds < LOCK_TIME && !chapterState.manual;
+
+            if (chapterState.manual) {
+                btn.classList.remove('bg-slate-800', 'opacity-50', 'cursor-not-allowed');
+                btn.classList.add('bg-green-600', 'hover:bg-green-500', 'border-green-500', 'text-white');
+                circle.classList.remove('border-slate-400');
+                circle.classList.add('border-white', 'bg-white/20');
+                icon.classList.remove('opacity-0');
+                text.innerText = "Completed";
+            } else if (isLocked) {
+                btn.classList.add('bg-slate-800', 'opacity-50', 'cursor-not-allowed');
+                btn.classList.remove('bg-green-600', 'hover:bg-green-500', 'border-green-500', 'text-white');
+                circle.classList.add('border-slate-400');
+                circle.classList.remove('border-white', 'bg-white/20');
+                icon.classList.add('opacity-0');
+                text.innerText = "Locked (Studying...)";
+            } else {
+                btn.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-green-600');
+                btn.classList.add('bg-slate-800', 'hover:bg-slate-700');
+                circle.classList.add('border-slate-400');
+                icon.classList.add('opacity-0');
+                text.innerText = "Mark Complete";
+            }
+        }
+
+        function finishQuizInternal() {
+            if (!chapterState.test) {
+                chapterState.test = true;
+                saveAndCalculate();
+            }
+        }
+
+        const contentView = document.getElementById('content-view');
+        const quizView = document.getElementById('quiz-view');
+        const headerSub = document.getElementById('header-subtitle');
+        const quizBackBtn = document.getElementById('quiz-back-btn');
+        const saveStatus = document.getElementById('save-status');
+
+        function startQuiz() {
+            contentView.classList.add('hidden');
+            quizView.classList.remove('hidden');
+            quizView.classList.add('flex');
+            headerSub.innerText = "Quiz Mode";
+            quizBackBtn.classList.remove('hidden');
+            saveStatus.classList.add('hidden');
+            const iframe = document.getElementById('main-player');
+            const src = iframe.src;
+            iframe.src = ''; 
+            iframe.setAttribute('data-src', src); 
+        }
+
+        function exitQuiz() {
+            quizView.classList.add('hidden');
+            quizView.classList.remove('flex');
+            contentView.classList.remove('hidden');
+            headerSub.innerText = "Now Watching";
+            quizBackBtn.classList.add('hidden');
+            saveStatus.classList.remove('hidden');
+            const iframe = document.getElementById('main-player');
+            const savedSrc = iframe.getAttribute('data-src');
+            if(savedSrc) iframe.src = savedSrc;
+        }
+
+        // --- QUESTION DATA (From TEST.HTML - Chapter 13) ---
+        const questions = [
+            {
+                id: 1,
+                text: "The radius of a nucleus (R) with mass number A is given by:",
+                options: ["R = R₀ A", "R = R₀ A¹/³", "R = R₀ A²/³", "R = R₀ A³"],
+                correct: 1,
+                topic: "Nuclear Size",
+                explanation: "The volume of a nucleus is proportional to A, so R³ ∝ A, which means R = R₀ A¹/³."
+            },
+            {
+                id: 2,
+                text: "The nuclear density of material is:",
+                options: ["Directly proportional to A", "Inversely proportional to A", "Constant for all nuclei", "Depends on Z"],
+                correct: 2,
+                topic: "Nuclear Density",
+                explanation: "Since volume is proportional to A and Mass is proportional to A, density (Mass/Volume) is constant for all nuclei (~2.3 x 10¹⁷ kg/m³)."
+            },
+            {
+                id: 3,
+                text: "The energy equivalent of 1 atomic mass unit (1 u) is approximately:",
+                options: ["1 MeV", "931.5 MeV", "13.6 MeV", "9.31 MeV"],
+                correct: 1,
+                topic: "Mass-Energy",
+                explanation: "1 u = 931.5 MeV/c². This is the energy equivalent of mass defect of 1 u."
+            },
+            {
+                id: 4,
+                text: "Which of the following forces is responsible for holding the nucleons together in a nucleus?",
+                options: ["Gravitational force", "Coulomb force", "Strong Nuclear force", "Weak Nuclear force"],
+                correct: 2,
+                topic: "Nuclear Force",
+                explanation: "The Strong Nuclear Force binds protons and neutrons together, overcoming the Coulomb repulsion between protons."
+            },
+            {
+                id: 5,
+                text: "In the binding energy per nucleon curve, the maximum stability corresponds to a mass number (A) around:",
+                options: ["2 (Hydrogen)", "56 (Iron)", "238 (Uranium)", "100 (Molybdenum)"],
+                correct: 1,
+                topic: "Binding Energy",
+                explanation: "The curve has a maximum of about 8.75 MeV/nucleon for A = 56 (Iron), indicating maximum stability."
+            },
+            {
+                id: 6,
+                text: "The SI unit of radioactivity (Activity) is:",
+                options: ["Curie", "Rutherford", "Becquerel", "Roentgen"],
+                correct: 2,
+                topic: "Radioactivity",
+                explanation: "The SI unit for activity is the becquerel (Bq), which equals 1 decay per second."
+            },
+            {
+                id: 7,
+                text: "The relationship between half-life (T₁/₂) and decay constant (λ) is:",
+                options: ["T₁/₂ = 0.693 / λ", "T₁/₂ = λ / 0.693", "T₁/₂ = 1 / λ", "T₁/₂ = ln(λ)"],
+                correct: 0,
+                topic: "Half-Life",
+                explanation: "Half-life is given by T₁/₂ = ln 2 / λ = 0.693 / λ."
+            },
+            {
+                id: 8,
+                text: "During Beta-minus (β⁻) decay, a neutron inside the nucleus converts into:",
+                options: ["Proton + Electron + Antineutrino", "Proton + Positron + Neutrino", "Proton + Electron + Neutrino", "Neutron + Positron"],
+                correct: 0,
+                topic: "Radioactive Decay",
+                explanation: "In β⁻ decay, a neutron converts to a proton, an electron, and an antineutrino (n → p + e⁻ + ν̄)."
+            },
+            {
+                id: 9,
+                text: "The function of a moderator in a nuclear reactor is to:",
+                options: ["Absorb neutrons", "Accelerate neutrons", "Slow down fast neutrons", "Cool the reactor"],
+                correct: 2,
+                topic: "Nuclear Reactor",
+                explanation: "Moderators (like Heavy Water) slow down fast neutrons to thermal energies so they can cause further fission in U-235."
+            },
+            {
+                id: 10,
+                text: "Control rods in a nuclear reactor are made of materials like Cadmium because they:",
+                options: ["Emit neutrons", "Absorb neutrons", "Reflect neutrons", "Slow down neutrons"],
+                correct: 1,
+                topic: "Nuclear Reactor",
+                explanation: "Control rods (Cadmium/Boron) absorb neutrons to control the reaction rate and prevent it from becoming supercritical."
+            },
+            {
+                id: 11,
+                text: "The energy generation in the Sun and stars is primarily due to:",
+                options: ["Nuclear Fission", "Nuclear Fusion", "Chemical Combustion", "Radioactive Decay"],
+                correct: 1,
+                topic: "Nuclear Fusion",
+                explanation: "Fusion of hydrogen nuclei into helium (thermonuclear fusion) is the source of energy in the Sun."
+            },
+            {
+                id: 12,
+                text: "In an alpha decay, the atomic number (Z) and mass number (A) change as:",
+                options: ["Z decreases by 2, A decreases by 4", "Z decreases by 1, A constant", "Z increases by 1, A constant", "Z decreases by 2, A constant"],
+                correct: 0,
+                topic: "Alpha Decay",
+                explanation: "An alpha particle is a Helium nucleus (₂He⁴). Thus, the parent nucleus loses 2 protons (Z-2) and 4 nucleons (A-4)."
+            },
+            {
+                id: 13,
+                text: "Isotopes are atoms of the same element having:",
+                options: ["Same A, different Z", "Same Z, different N (neutron number)", "Same N, different Z", "Different Z and different A"],
+                correct: 1,
+                topic: "Isotopes",
+                explanation: "Isotopes have the same number of protons (Z) but different number of neutrons (N), resulting in different mass numbers (A)."
+            },
+            {
+                id: 14,
+                text: "Nuclear forces are:",
+                options: ["Long range and charge dependent", "Short range and charge independent", "Long range and attractive only", "Short range and repulsive only"],
+                correct: 1,
+                topic: "Nuclear Force",
+                explanation: "Nuclear forces are short-range (few femtometers) and do not depend on the charge of the nucleons."
+            },
+            {
+                id: 15,
+                text: "Which of the following is NOT conserved in nuclear reactions?",
+                options: ["Total Energy-Mass", "Momentum", "Charge", "Number of atoms of each element"],
+                correct: 3,
+                topic: "Nuclear Reactions",
+                explanation: "In nuclear reactions, elements can be transmuted (changed), so the number of atoms of a specific element is NOT conserved."
+            }
+        ];
+
+        const quizApp = {
+            idx: 0, answers: Array(questions.length).fill(null), timer: 900, interval: null,
+
+            start: function() {
+                this.idx = 0; this.answers.fill(null); this.timer = 900;
+                document.getElementById('screen-start').classList.add('hidden');
+                document.getElementById('screen-result').classList.add('hidden');
+                document.getElementById('screen-result').classList.remove('flex');
+                const quizScreen = document.getElementById('screen-quiz');
+                quizScreen.classList.remove('hidden');
+                quizScreen.classList.add('flex');
+                this.renderQ();
+                this.startTimer();
+            },
+
+            startTimer: function() {
+                clearInterval(this.interval);
+                this.interval = setInterval(() => {
+                    if(this.timer <= 0) { this.finish(); return; }
+                    this.timer--;
+                    const m = Math.floor(this.timer / 60);
+                    const s = this.timer % 60;
+                    document.getElementById('timer').innerText = `${m}:${s < 10 ? '0'+s : s}`;
+                }, 1000);
+            },
+
+            renderQ: function() {
+                const q = questions[this.idx];
+                document.getElementById('q-idx').innerText = this.idx + 1;
+                document.getElementById('q-text').innerText = q.text;
+                const box = document.getElementById('options-box');
+                box.innerHTML = '';
+                const nextBtn = document.getElementById('btn-next');
+                nextBtn.disabled = true;
+                nextBtn.innerText = (this.idx === questions.length - 1) ? "Submit Quiz" : "Next Question";
+
+                q.options.forEach((opt, i) => {
+                    const div = document.createElement('div');
+                    div.className = 'quiz-option';
+                    div.innerHTML = `<div class="quiz-circle"></div><span class="text-slate-300 font-medium">${opt}</span>`;
+                    div.onclick = () => this.select(i, div);
+                    box.appendChild(div);
+                });
+            },
+
+            select: function(optIdx, el) {
+                this.answers[this.idx] = optIdx;
+                document.querySelectorAll('.quiz-option').forEach(x => x.classList.remove('selected'));
+                el.classList.add('selected');
+                document.getElementById('btn-next').disabled = false;
+            },
+
+            next: function() {
+                if(this.idx < questions.length - 1) { this.idx++; this.renderQ(); } 
+                else { this.finish(); }
+            },
+
+            finish: function() {
+                clearInterval(this.interval);
+                let correctCount = 0;
+                let topicStats = {};
+
+                questions.forEach((q, i) => {
+                    const isCorrect = (this.answers[i] === q.correct);
+                    if(isCorrect) correctCount++;
+                    if(!topicStats[q.topic]) topicStats[q.topic] = { total: 0, right: 0 };
+                    topicStats[q.topic].total++;
+                    if(isCorrect) topicStats[q.topic].right++;
+                });
+
+                document.getElementById('screen-quiz').classList.add('hidden');
+                document.getElementById('screen-quiz').classList.remove('flex');
+                const resultScreen = document.getElementById('screen-result');
+                resultScreen.classList.remove('hidden');
+                resultScreen.classList.add('flex');
+
+                document.getElementById('score').innerText = correctCount;
+                const pct = Math.round((correctCount / questions.length) * 100);
+                document.getElementById('score-text').innerText = `${pct}% Accuracy`;
+                const deg = (correctCount / questions.length) * 360;
+                document.getElementById('chart-pie').style.background = `conic-gradient(#22c55e 0deg ${deg}deg, #ef4444 ${deg}deg 360deg)`;
+                document.getElementById('pie-text').innerText = `${pct}%`;
+
+                const barBox = document.getElementById('chart-bars');
+                const graphBox = document.getElementById('topic-graph');
+                barBox.innerHTML = '';
+                graphBox.innerHTML = '';
+
+                for (const [topic, data] of Object.entries(topicStats)) {
+                    const topicPct = Math.round((data.right / data.total) * 100);
+                    barBox.innerHTML += `
+                        <div class="text-sm">
+                            <div class="flex justify-between text-slate-400 mb-1">
+                                <span class="font-medium text-white">${topic}</span>
+                                <span>${data.right}/${data.total}</span>
+                            </div>
+                            <div class="bar-bg"><div class="bar-fill" style="width: ${topicPct}%"></div></div>
+                        </div>`;
+                    graphBox.innerHTML += `
+                        <div class="graph-bar-group">
+                            <div class="graph-bar" style="height: ${topicPct}%;">
+                                <div class="graph-value">${topicPct}%</div>
+                            </div>
+                            <div class="graph-label">${topic}</div>
+                        </div>`;
+                }
+
+                finishQuizInternal(); 
+
+                const reviewBox = document.getElementById('review-box');
+                reviewBox.innerHTML = '';
+                questions.forEach((q, i) => {
+                    const isRight = (this.answers[i] === q.correct);
+                    reviewBox.innerHTML += `
+                        <div class="p-4 rounded-xl border border-white/5 bg-[#1e293b] ${isRight ? 'border-l-4 border-l-green-500' : 'border-l-4 border-l-red-500'}">
+                            <p class="font-bold text-white mb-2 text-base">Q${i+1}: ${q.text}</p>
+                            <div class="text-sm mb-2"><span class="${isRight ? 'text-green-400' : 'text-red-400'}">Answer: ${this.answers[i]!==null?q.options[this.answers[i]]:'Skipped'}</span></div>
+                            <div class="text-xs text-slate-400">${q.explanation}</div>
+                        </div>`;
+                });
+            }
+        };
+    </script>
+</body>
+</html>

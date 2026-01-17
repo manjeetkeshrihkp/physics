@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lecture Player | JEE Matrix</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=Merriweather:ital,wght@0,300;0,400;0,700;1,400&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { 
+                        sans: ['Inter', 'sans-serif'],
+                        serif: ['Merriweather', 'serif'],
+                    },
+                    colors: { background: '#020617' },
+                    animation: { 'fade-in': 'fadeIn 0.5s ease-out forwards' },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0', transform: 'translateY(10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #020617;
+            color: #f8fafc;
+            background-image: linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            min-height: 100vh;
+        }
+
+        /* Video Container (16:9) */
+        .video-container {
+            position: relative;
+            padding-bottom: 56.25%;
+            height: 0;
+            overflow: hidden;
+            background: #000;
+            border-radius: 16px;
+            box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .video-container iframe {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        /* Notes Specific Styles */
+        .notes-content p, .notes-content li {
+            font-family: 'Merriweather', serif;
+            color: #cbd5e1;
+            line-height: 1.8;
+            margin-bottom: 1rem;
+        }
+        .notes-content h2 {
+            font-family: 'Inter', sans-serif;
+            color: #a78bfa; /* Purple-400 */
+            font-weight: 700;
+            font-size: 1.5rem;
+            margin-top: 3rem;
+            margin-bottom: 1rem;
+            border-left: 4px solid #9333ea; /* Purple-600 */
+            padding-left: 1rem;
+        }
+        .notes-content h3 {
+            font-family: 'Inter', sans-serif;
+            color: #f8fafc;
+            font-weight: 600;
+            font-size: 1.25rem;
+            margin-top: 2rem;
+            margin-bottom: 0.75rem;
+        }
+        .notes-content strong { color: #fff; }
+        .notes-content ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1.5rem; }
+        .notes-content ol { list-style-type: decimal; padding-left: 1.5rem; margin-bottom: 1.5rem; }
+        
+        .formula-box {
+            background-color: #1e293b;
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin: 1.5rem 0;
+            text-align: center;
+            font-family: 'Inter', sans-serif;
+            overflow-x: auto;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+
+        .note-highlight {
+            background-color: rgba(168, 85, 247, 0.1); 
+            border-left: 4px solid #a855f7;
+            padding: 1rem 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 0 8px 8px 0;
+            font-style: italic;
+        }
+
+        /* --- CHAPTER 11 ANIMATIONS (Ported from DNature.html) --- */
+        .diagram-container {
+            background-color: #0f172a;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 30px;
+            margin: 2rem 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            text-align: center;
+        }
+        .caption { margin-top: 15px; font-size: 0.85rem; color: #94a3b8; font-family: 'Inter', sans-serif; font-weight: bold; }
+
+        /* Animation 1: Photoelectric Effect */
+        .photoelectric-box { width: 300px; height: 150px; position: relative; display: flex; align-items: center; }
+        .metal-plate { width: 10px; height: 100px; background-color: #94a3b8; position: absolute; left: 50px; border-radius: 2px; }
+        .collector-plate { width: 10px; height: 100px; background-color: #94a3b8; position: absolute; right: 50px; border-radius: 2px; }
+        .photon-beam { position: absolute; width: 40px; height: 2px; background-color: #fbbf24; top: 40px; left: 0; animation: lightHit 2s infinite linear; }
+        .photon-beam:nth-child(2) { top: 60px; animation-delay: 0.5s; }
+        .photon-beam:nth-child(3) { top: 80px; animation-delay: 1s; }
+        .electron-dot { width: 8px; height: 8px; background-color: #34d399; border-radius: 50%; position: absolute; left: 60px; opacity: 0; box-shadow: 0 0 5px #34d399; }
+        .e1 { top: 40px; animation: eject 2s infinite ease-out 0.2s; }
+        .e2 { top: 60px; animation: eject 2s infinite ease-out 0.7s; }
+        .e3 { top: 80px; animation: eject 2s infinite ease-out 1.2s; }
+        @keyframes lightHit { 0% { transform: translateX(0); opacity: 1; } 50% { transform: translateX(50px); opacity: 1; } 51% { opacity: 0; } 100% { opacity: 0; } }
+        @keyframes eject { 0% { left: 60px; opacity: 0; } 10% { opacity: 1; } 100% { left: 240px; opacity: 0; } }
+
+        /* Animation 2: Graph V0 vs Frequency */
+        .graph-box { width: 300px; height: 180px; position: relative; border-left: 2px solid #cbd5e1; border-bottom: 2px solid #cbd5e1; }
+        .graph-line {
+            width: 200px; height: 2px; background-color: #a78bfa; position: absolute; bottom: 20px; left: 50px;
+            transform-origin: left; transform: rotate(-35deg); animation: drawGraph 3s infinite ease-out;
+        }
+        .threshold-dot { width: 8px; height: 8px; background-color: #c4b5fd; border-radius: 50%; position: absolute; bottom: -4px; left: 46px; }
+        .graph-label { position: absolute; color: #cbd5e1; font-size: 0.8rem; }
+        .label-v0 { top: 10px; left: -30px; } .label-nu { bottom: -25px; right: 10px; } .label-nu0 { bottom: -20px; left: 45px; }
+        @keyframes drawGraph { 0% { width: 0; } 100% { width: 220px; } }
+
+        /* Animation 3: De Broglie Wave */
+        .matter-wave-box { width: 300px; height: 100px; position: relative; display: flex; align-items: center; }
+        .particle { width: 15px; height: 15px; background-color: #34d399; border-radius: 50%; position: absolute; left: 0; animation: moveParticle 4s infinite linear; }
+        .wave-trail {
+            position: absolute; height: 40px; width: 100px; left: 0; top: 30px;
+            background: repeating-linear-gradient(90deg, transparent, transparent 10px, rgba(52, 211, 153, 0.3) 10px, rgba(52, 211, 153, 0.3) 20px);
+            mask-image: linear-gradient(to right, transparent, black); -webkit-mask-image: linear-gradient(to right, transparent, black);
+            animation: moveTrail 4s infinite linear;
+        }
+        @keyframes moveParticle { 0% { left: 0; } 100% { left: 280px; } }
+        @keyframes moveTrail { 0% { width: 0; left: 0; } 100% { width: 280px; left: 0; } }
+
+        /* Animation 4: Davisson Germer */
+        .scattering-box { width: 300px; height: 200px; position: relative; }
+        .crystal-surface { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 5px; }
+        .atom { width: 10px; height: 10px; background-color: #94a3b8; border-radius: 50%; }
+        .incident-beam { position: absolute; width: 2px; height: 100px; background-color: #34d399; top: 0; left: 50%; animation: beamIn 2s infinite linear; }
+        .scattered-beam {
+            position: absolute; width: 2px; height: 100px; background-color: #34d399; bottom: 30px; left: 50%;
+            transform-origin: bottom; animation: beamOut 2s infinite linear;
+        }
+        @keyframes beamIn { 0% { height: 0; top: 0; } 100% { height: 130px; top: 0; opacity: 0; } }
+        @keyframes beamOut { 0% { height: 0; transform: rotate(0deg); opacity: 0;} 50% { height: 100px; transform: rotate(50deg); opacity: 1; } 100% { height: 150px; transform: rotate(50deg); opacity: 0; } }
+
+        /* Quiz Specifics */
+        .quiz-option {
+            background: #1e293b;
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 1rem 1.25rem;
+            border-radius: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .quiz-option:hover { background: #334155; }
+        .quiz-option.selected { background: rgba(168, 85, 247, 0.2); border-color: #a855f7; }
+        .quiz-circle { width: 20px; height: 20px; border: 2px solid #64748b; border-radius: 50%; flex-shrink: 0; }
+        .quiz-option.selected .quiz-circle { border-color: #a855f7; background: #a855f7; }
+
+        /* Pie Chart */
+        .pie-chart {
+            width: 120px; height: 120px; border-radius: 50%;
+            margin: 15px 0;
+            background: conic-gradient(#22c55e 0deg, #ef4444 0deg);
+            position: relative;
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+        }
+        .pie-inner {
+            position: absolute; top: 15px; left: 15px;
+            width: 90px; height: 90px;
+            background: #1e293b; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; color: #fff;
+        }
+
+        /* Graph Container */
+        .graph-container {
+            height: 140px;
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+            padding-bottom: 5px;
+            border-bottom: 2px solid rgba(255,255,255,0.1);
+            margin-top: 20px;
+            overflow-x: auto;
+            width: 100%;
+            padding-right: 10px;
+        }
+        .graph-bar-group {
+            flex: 0 0 auto;
+            min-width: 45px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100%;
+            justify-content: flex-end;
+        }
+        .graph-bar {
+            width: 100%;
+            background: linear-gradient(to top, #9333ea, #c084fc);
+            border-radius: 4px 4px 0 0;
+            transition: height 1s ease-out;
+            position: relative;
+            min-height: 4px;
+        }
+        .graph-label {
+            margin-top: 8px; font-size: 0.65rem; color: #94a3b8;
+            text-align: center; width: 100%; white-space: nowrap;
+            overflow: hidden; text-overflow: ellipsis;
+        }
+        .graph-value {
+            position: absolute; top: -18px; left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.65rem; color: #fff; font-weight: bold;
+        }
+        .bar-bg { background: rgba(255,255,255,0.05); height: 6px; border-radius: 99px; overflow: hidden; }
+        .bar-fill { height: 100%; background: #a855f7; transition: width 1s ease; }
+    </style>
+</head>
+<body class="flex flex-col h-screen overflow-hidden">
+
+    <header class="h-16 border-b border-white/5 bg-[#020617]/90 backdrop-blur-md flex items-center justify-between px-6 z-[100] flex-shrink-0 relative">
+        <div class="flex items-center gap-4">
+            <a href="physics.html" class="w-10 h-10 rounded-full hover:bg-white/5 flex items-center justify-center text-slate-400 hover:text-white transition-all group cursor-pointer" title="Back to Chapters">
+                <svg class="w-5 h-5 group-hover:-translate-x-1 transition-transform pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+            </a>
+            <div>
+                <p class="text-[10px] uppercase tracking-widest text-purple-400 font-bold" id="header-subtitle">Now Watching</p>
+                <h1 id="header-title" class="text-sm md:text-base font-bold text-white truncate max-w-[200px] md:max-w-md">Dual Nature of Radiation & Matter</h1>
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+            <button id="quiz-back-btn" onclick="exitQuiz()" class="hidden px-3 py-1.5 text-xs font-bold bg-white/10 hover:bg-white/20 rounded-lg text-white transition-colors border border-white/10">
+                Back to Lecture
+            </button>
+            <span class="text-xs text-slate-500 font-medium hidden md:block" id="save-status">Tracking Progress...</span>
+            <div class="flex items-center gap-2 bg-slate-800 px-3 py-1 rounded-full border border-white/10">
+                 <div class="w-2 h-2 rounded-full bg-orange-500 animate-pulse" id="live-indicator"></div>
+                 <span class="text-xs font-bold text-white" id="live-percent">0%</span>
+            </div>
+        </div>
+        <div id="visual-progress" class="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-purple-500 to-fuchsia-500 transition-all duration-700 ease-in-out shadow-[0_0_10px_rgba(168,85,247,0.5)]" style="width: 0%"></div>
+    </header>
+
+    <main class="flex-grow overflow-y-auto p-4 md:p-8 flex flex-col items-center relative">
+        
+        <div id="content-view" class="w-full max-w-4xl animate-fade-in pb-20">
+            
+            <div class="video-container mb-6">
+                <iframe id="main-player" src="https://www.youtube.com/embed/PG9JYCLPCxA?autoplay=0&rel=0&modestbranding=1" title="Video Player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+            </div>
+
+            <div class="flex flex-col md:flex-row items-center justify-between gap-4 p-6 bg-[#0f172a] border border-white/5 rounded-2xl shadow-lg mb-10">
+                <div class="w-full md:w-auto">
+                    <h2 id="video-title" class="text-2xl font-bold text-white mb-1">Dual Nature of Radiation & Matter</h2>
+                    <p class="text-slate-400 text-sm">Physics • Class 12 • Chapter 11</p>
+                </div>
+                <div class="flex items-center gap-3 w-full md:w-auto">
+                    <button id="mark-done-btn" onclick="toggleStatus()" class="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-slate-800 border border-slate-600 transition-all text-sm font-semibold text-slate-200 group cursor-not-allowed opacity-50">
+                        <div class="w-5 h-5 rounded-full border-2 border-slate-400 group-hover:border-white flex items-center justify-center">
+                            <svg class="w-3 h-3 text-white opacity-0 transition-opacity check-icon" fill="currentColor" viewBox="0 0 20 20"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"></path></svg>
+                        </div>
+                        <span class="btn-text" id="mark-btn-text">Locked (Studying...)</span>
+                    </button>
+                    
+                    <button onclick="startQuiz()" class="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white font-bold shadow-lg shadow-purple-500/20 hover:shadow-purple-500/40 hover:-translate-y-0.5 transition-all group">
+                        <span>Take Test</span>
+                        <svg class="w-5 h-5 group-hover:rotate-6 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                    </button>
+                </div>
+            </div>
+
+            <div id="detailed-notes" class="notes-content">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="h-8 w-1 bg-purple-500 rounded-full"></div>
+                    <h2 class="!m-0 !border-0 !p-0 text-3xl text-white">Detailed Physics Notes</h2>
+                </div>
+                
+                <p class="text-slate-400 italic mb-8">Comprehensive notes based on NCERT Class 12 Physics - Chapter 11</p>
+
+                <section id="intro">
+                    <h2>1. Introduction</h2>
+                    <p><strong>Wave-Particle Duality:</strong> Radiation and matter exhibit both wave-like and particle-like properties.</p>
+                    <ul>
+                        <li><strong>Electron Emission:</strong> Metals have free electrons. The minimum energy required to pull an electron out of the metal surface is called the <strong>Work Function (\(\phi_0\))</strong>.</li>
+                        <li><strong>Types of Emission:</strong>
+                            <ul>
+                                <li><strong>Thermionic Emission:</strong> By heating.</li>
+                                <li><strong>Field Emission:</strong> By applying a strong electric field.</li>
+                                <li><strong>Photoelectric Emission:</strong> By illuminating with light of suitable frequency.</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </section>
+
+                <section id="photoelectric">
+                    <h2>2. Photoelectric Effect</h2>
+                    <p>The emission of electrons from a metal surface when light of suitable frequency falls on it is called the Photoelectric Effect. The emitted electrons are called <strong>photoelectrons</strong>.</p>
+
+                    <div class="diagram-container">
+                        <div class="photoelectric-box">
+                            <div class="photon-beam"></div>
+                            <div class="photon-beam"></div>
+                            <div class="photon-beam"></div>
+                            <div class="metal-plate"></div>
+                            <div class="electron-dot e1"></div>
+                            <div class="electron-dot e2"></div>
+                            <div class="electron-dot e3"></div>
+                            <div class="collector-plate"></div>
+                        </div>
+                        <div class="caption"> Incident light (amber) strikes the metal plate, causing the instantaneous emission of electrons (green) towards the collector.
+                        </div>
+                    </div>
+
+                    <h3>Experimental Observations</h3>
+                    <ul>
+                        <li><strong>Intensity:</strong> Photocurrent is directly proportional to the intensity of incident light.</li>
+                        <li><strong>Potential:</strong> As the positive potential of the collector increases, current reaches a maximum called <strong>Saturation Current</strong>. If the potential is made negative, the current stops at a specific value called <strong>Stopping Potential (\(V_0\))</strong>.</li>
+                        <li><strong>Frequency:</strong> Stopping potential varies linearly with the frequency of incident radiation. There exists a minimum frequency below which no emission occurs, called <strong>Threshold Frequency (\(\nu_0\))</strong>.</li>
+                        <li><strong>Instantaneous Process:</strong> Emission occurs within \(10^{-9}\) s.</li>
+                    </ul>
+                    <p><strong>Failure of Wave Theory:</strong> The wave theory could not explain the instantaneous emission or the existence of a threshold frequency, as it predicted energy absorption would be continuous and take time.</p>
+                </section>
+
+                <section id="einstein">
+                    <h2>3. Einstein's Photoelectric Equation</h2>
+                    <p>Albert Einstein (1905) explained the effect by proposing that light consists of discrete packets of energy called <strong>Quanta</strong> or <strong>Photons</strong>. The energy of each photon is \(E = h\nu\).</p>
+                    
+                    <div class="formula-box">
+                        $$ K_{max} = h\nu - \phi_0 $$
+                        $$ eV_0 = h\nu - \phi_0 $$
+                    </div>
+                    
+                    <div class="diagram-container">
+                        <div class="graph-box">
+                            <div class="graph-label label-v0">Stopping Potential (\(V_0\))</div>
+                            <div class="graph-label label-nu">Frequency (\(\nu\))</div>
+                            <div class="graph-label label-nu0">\(\nu_0\)</div>
+                            <div class="graph-line"></div>
+                            <div class="threshold-dot"></div>
+                        </div>
+                        <div class="caption">
+                        </div>
+                    </div>
+
+                    <p>This equation explains all observations:
+                        <br> - \(K_{max}\) depends on \(\nu\), not intensity.
+                        <br> - Emission happens only if \(h\nu > \phi_0\) (explaining threshold frequency).
+                        <br> - Increasing intensity increases the number of photons, hence number of electrons (current), but not their energy.
+                    </p>
+                </section>
+
+                <section id="photon">
+                    <h2>4. Particle Nature of Light: The Photon</h2>
+                    <p>Light interacts with matter as if it is made of particles called photons.</p>
+                    <ul>
+                        <li>Energy: \(E = h\nu = hc/\lambda\).</li>
+                        <li>Momentum: \(p = h\nu/c = h/\lambda\).</li>
+                        <li>Photons are electrically neutral.</li>
+                        <li>In photon-particle collisions, total energy and momentum are conserved.</li>
+                        <li>Photon mass is zero (rest mass).</li>
+                    </ul>
+                </section>
+
+                <section id="matterwave">
+                    <h2>5. Wave Nature of Matter</h2>
+                    <p><strong>De Broglie Hypothesis (1924):</strong> Just as radiation has a dual nature, matter (particles like electrons) also exhibits wave-like properties.</p>
+                    
+                    <div class="formula-box">
+                        $$ \lambda = \frac{h}{p} = \frac{h}{mv} $$
+                    </div>
+                    <p>This is the <strong>De Broglie Wavelength</strong>.</p>
+
+                    <div class="diagram-container">
+                        <div class="matter-wave-box">
+                            <div class="particle"></div>
+                            <div class="wave-trail"></div>
+                        </div>
+                        <div class="caption">
+                            A moving particle (electron) has an associated wave of wavelength \(\lambda = h/p\).
+                        </div>
+                    </div>
+
+                    <h3>De Broglie Wavelength of an Electron</h3>
+                    <p>For an electron accelerated through a potential \(V\):</p>
+                    <div class="formula-box">
+                        $$ \lambda = \frac{h}{\sqrt{2mK}} = \frac{h}{\sqrt{2meV}} $$
+                        $$ \lambda \approx \frac{1.227}{\sqrt{V}} \, \text{nm} $$
+                    </div>
+                </section>
+
+                <section id="davisson">
+                    <h2>6. Davisson and Germer Experiment</h2>
+                    <p>This experiment provided the first experimental proof of the wave nature of electrons.</p>
+                    <ul>
+                        <li>A beam of electrons was scattered by a Nickel crystal.</li>
+                        <li>A strong peak in intensity was observed at a scattering angle of \(50^\circ\) for an accelerating voltage of 54 V.</li>
+                        <li>This peak is due to the constructive interference of electron waves diffracted by the crystal lattice.</li>
+                    </ul>
+
+                    <div class="diagram-container">
+                        <div class="scattering-box">
+                            <div class="incident-beam"></div>
+                            <div class="scattered-beam"></div>
+                            <div class="crystal-surface">
+                                <div class="atom"></div><div class="atom"></div><div class="atom"></div><div class="atom"></div><div class="atom"></div>
+                            </div>
+                        </div>
+                        <div class="caption"> Electron beam scattering off a crystal lattice. The diffraction peak confirms wave behavior.
+                        </div>
+                    </div>
+
+                    <p>The wavelength calculated from diffraction data matched the theoretical de Broglie wavelength (\(\lambda \approx 0.167\) nm), confirming the hypothesis.</p>
+                </section>
+                <div class="mt-10 pt-6 border-t border-white/10 text-center text-slate-500 text-sm">
+                    BRO YOU CAN AND YOU WILL ⚡
+                </div>
+            </div>
+        </div>
+
+        <div id="quiz-view" class="w-full max-w-4xl flex-col items-center animate-fade-in hidden pb-20">
+            <div class="w-full bg-[#1e293b] border border-white/5 rounded-2xl p-4 mb-6 flex justify-between items-center shadow-lg">
+                <h2 class="text-xl font-bold text-white">Physics Master Quiz</h2>
+                <div class="px-3 py-1 bg-black/30 rounded-lg border border-white/10 font-mono text-lg text-white" id="timer">15:00</div>
+            </div>
+
+            <div id="screen-start" class="w-full bg-[#0f172a] border border-white/5 rounded-2xl p-8 text-center shadow-lg flex flex-col items-center">
+                <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-purple-600 to-fuchsia-600 flex items-center justify-center mb-6 shadow-lg shadow-purple-500/20">
+                    <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </div>
+                <h2 class="text-3xl font-bold text-white mb-2">Practice Quiz</h2>
+                <p class="text-slate-400 mb-8">15 Questions • 15 Minutes • Board Level MCQs</p>
+                <button onclick="quizApp.start()" class="px-8 py-3 rounded-xl bg-white text-black font-bold hover:scale-105 transition-transform">Start Now</button>
+            </div>
+
+            <div id="screen-quiz" class="w-full hidden flex-col">
+                <div class="mb-6">
+                    <div class="text-purple-400 font-bold text-sm tracking-wider mb-2">QUESTION <span id="q-idx">1</span>/15</div>
+                    <div id="q-text" class="text-xl md:text-2xl font-bold text-white leading-relaxed">Loading...</div>
+                </div>
+                <div id="options-box" class="space-y-3 mb-8 w-full"></div>
+                <div class="flex justify-end">
+                    <button id="btn-next" onclick="quizApp.next()" disabled class="px-6 py-3 rounded-xl bg-purple-600 text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-purple-500 transition-colors">Next Question</button>
+                </div>
+            </div>
+
+            <div id="screen-result" class="w-full hidden flex-col">
+                <div class="bg-[#1e293b] border border-white/5 rounded-2xl p-6 mb-6 flex flex-col md:flex-row items-center justify-between gap-6 shadow-lg">
+                    <div class="text-center md:text-left">
+                        <p class="text-slate-400 text-xs uppercase tracking-widest font-bold mb-1">Total Score</p>
+                        <div class="text-5xl font-black text-white"><span id="score">0</span><span class="text-2xl text-slate-500">/15</span></div>
+                        <div id="score-text" class="text-green-400 font-bold mt-2">0% Accuracy</div>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <div class="pie-chart" id="chart-pie">
+                            <div class="pie-inner" id="pie-text">0%</div>
+                        </div>
+                    </div>
+                    <div class="flex gap-3">
+                        <button onclick="quizApp.start()" class="px-5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition-colors border border-white/10">Retake Quiz</button>
+                        <button onclick="exitQuiz()" class="px-5 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-colors">Finish & Save</button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <div class="bg-[#1e293b] border border-white/5 rounded-2xl p-6 shadow-lg">
+                        <div class="text-slate-400 text-xs uppercase tracking-widest font-bold mb-4 flex items-center gap-2">
+                            <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z"></path></svg>
+                            Topic Wise Performance
+                        </div>
+                        <div id="chart-bars" class="space-y-4"></div>
+                    </div>
+
+                    <div class="bg-[#1e293b] border border-white/5 rounded-2xl p-6 shadow-lg">
+                        <div class="text-slate-400 text-xs uppercase tracking-widest font-bold mb-4 flex items-center gap-2">
+                            <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path></svg>
+                            Analysis Graph
+                        </div>
+                        <div id="topic-graph" class="graph-container">
+                        </div>
+                    </div>
+                </div>
+
+                <h3 class="text-xl font-bold text-white mb-4 pl-1 border-l-4 border-purple-500">Detailed Review</h3>
+                <div id="review-box" class="space-y-4 w-full"></div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // --- 1. SMART PROGRESS TRACKING LOGIC (UPDATED FOR CHAPTER 11) ---
+        const KEY_PROGRESS = 'physics_chapter_11_progress'; 
+        const KEY_STATE = 'physics_chapter_11_state';       
+
+        const LOCK_TIME = 1500; // 2 HOURS
+        const INTERVAL_DURATION = 400; // 30 Minutes
+
+        const DEFAULT_STATE = {
+            manual: false, // Worth 50%
+            test: false,   // Worth 20%
+            timeIntervals: 0, // Max 4, worth 7.5% each (Total 30%)
+            timeSpentSeconds: 0 
+        };
+        
+        let chapterState = { ...DEFAULT_STATE };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadState();
+            startTimer();
+            updateUI();
+            saveAndCalculate(); 
+        });
+
+        function loadState() {
+            const savedState = localStorage.getItem(KEY_STATE);
+            if (savedState) {
+                try {
+                    const parsed = JSON.parse(savedState);
+                    chapterState = { ...DEFAULT_STATE, ...parsed };
+                    if(typeof chapterState.timeIntervals !== 'number') chapterState.timeIntervals = 0;
+                    if(typeof chapterState.timeSpentSeconds !== 'number') chapterState.timeSpentSeconds = 0;
+                } catch(e) {
+                    console.error("State load error, resetting", e);
+                    chapterState = { ...DEFAULT_STATE };
+                }
+            }
+        }
+
+        function saveAndCalculate() {
+            localStorage.setItem(KEY_STATE, JSON.stringify(chapterState));
+            
+            // MATH: 50% + 20% + (4 * 7.5%) = 100%
+            let percent = 0;
+            if (chapterState.manual) percent += 50;
+            if (chapterState.test) percent += 20;
+            percent += (chapterState.timeIntervals * 7.5);
+
+            if (percent > 100) percent = 100; 
+            
+            const displayPercent = Math.floor(percent);
+
+            localStorage.setItem(KEY_PROGRESS, displayPercent.toString());
+
+            const indicator = document.getElementById('live-indicator');
+            const txt = document.getElementById('live-percent');
+            const bar = document.getElementById('visual-progress');
+            
+            if(txt) txt.innerText = `${displayPercent}%`;
+            if(bar) bar.style.width = `${displayPercent}%`;
+            
+            if (indicator) {
+                if (displayPercent === 100) {
+                    indicator.classList.remove('bg-orange-500', 'animate-pulse');
+                    indicator.classList.add('bg-green-500');
+                } else {
+                    indicator.classList.add('bg-orange-500', 'animate-pulse');
+                    indicator.classList.remove('bg-green-500');
+                }
+            }
+        }
+
+        function startTimer() {
+            setInterval(() => {
+                chapterState.timeSpentSeconds++;
+                
+                // 1. INTERVAL CHECK
+                let currentIntervals = Math.floor(chapterState.timeSpentSeconds / INTERVAL_DURATION);
+                if (currentIntervals > 4) currentIntervals = 4;
+
+                if (currentIntervals > chapterState.timeIntervals) {
+                    chapterState.timeIntervals = currentIntervals;
+                    saveAndCalculate();
+                    const status = document.getElementById('save-status');
+                    if(status) {
+                        status.innerText = `Progress Added (+7.5%)`;
+                        setTimeout(() => status.innerText = "Tracking Progress...", 3000);
+                    }
+                }
+
+                // 2. UNLOCK CHECK
+                const isLockedUI = document.getElementById('mark-btn-text').innerText.includes('Locked');
+                if (chapterState.timeSpentSeconds >= LOCK_TIME && isLockedUI) {
+                    updateUI(); 
+                    const status = document.getElementById('save-status');
+                    if(status) status.innerText = "Chapter Unlocked!";
+                }
+
+                if (chapterState.timeSpentSeconds % 10 === 0) {
+                    localStorage.setItem(KEY_STATE, JSON.stringify(chapterState));
+                }
+            }, 1000);
+        }
+
+        function toggleStatus() {
+            if (chapterState.timeSpentSeconds < LOCK_TIME && !chapterState.manual) {
+                alert("You must watch this lecture for at least 2 hours before marking it as complete.");
+                return;
+            }
+            chapterState.manual = !chapterState.manual; 
+            updateUI(); 
+            saveAndCalculate(); 
+        }
+
+        function updateUI() {
+            const btn = document.getElementById('mark-done-btn');
+            if(!btn) return;
+            
+            const icon = btn.querySelector('.check-icon');
+            const text = document.getElementById('mark-btn-text');
+            const circle = btn.querySelector('div');
+            const isLocked = chapterState.timeSpentSeconds < LOCK_TIME && !chapterState.manual;
+
+            if (chapterState.manual) {
+                btn.classList.remove('bg-slate-800', 'opacity-50', 'cursor-not-allowed');
+                btn.classList.add('bg-green-600', 'hover:bg-green-500', 'border-green-500', 'text-white');
+                circle.classList.remove('border-slate-400');
+                circle.classList.add('border-white', 'bg-white/20');
+                icon.classList.remove('opacity-0');
+                text.innerText = "Completed";
+            } else if (isLocked) {
+                btn.classList.add('bg-slate-800', 'opacity-50', 'cursor-not-allowed');
+                btn.classList.remove('bg-green-600', 'hover:bg-green-500', 'border-green-500', 'text-white');
+                circle.classList.add('border-slate-400');
+                circle.classList.remove('border-white', 'bg-white/20');
+                icon.classList.add('opacity-0');
+                text.innerText = "Locked (Studying...)";
+            } else {
+                btn.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-green-600');
+                btn.classList.add('bg-slate-800', 'hover:bg-slate-700');
+                circle.classList.add('border-slate-400');
+                icon.classList.add('opacity-0');
+                text.innerText = "Mark Complete";
+            }
+        }
+
+        function finishQuizInternal() {
+            if (!chapterState.test) {
+                chapterState.test = true;
+                saveAndCalculate();
+            }
+        }
+
+        const contentView = document.getElementById('content-view');
+        const quizView = document.getElementById('quiz-view');
+        const headerSub = document.getElementById('header-subtitle');
+        const quizBackBtn = document.getElementById('quiz-back-btn');
+        const saveStatus = document.getElementById('save-status');
+
+        function startQuiz() {
+            contentView.classList.add('hidden');
+            quizView.classList.remove('hidden');
+            quizView.classList.add('flex');
+            headerSub.innerText = "Quiz Mode";
+            quizBackBtn.classList.remove('hidden');
+            saveStatus.classList.add('hidden');
+            const iframe = document.getElementById('main-player');
+            const src = iframe.src;
+            iframe.src = ''; 
+            iframe.setAttribute('data-src', src); 
+        }
+
+        function exitQuiz() {
+            quizView.classList.add('hidden');
+            quizView.classList.remove('flex');
+            contentView.classList.remove('hidden');
+            headerSub.innerText = "Now Watching";
+            quizBackBtn.classList.add('hidden');
+            saveStatus.classList.remove('hidden');
+            const iframe = document.getElementById('main-player');
+            const savedSrc = iframe.getAttribute('data-src');
+            if(savedSrc) iframe.src = savedSrc;
+        }
+
+        // --- QUESTION DATA (From TEST.HTML) ---
+        const questions = [
+            {
+                id: 1,
+                text: "The minimum energy required by an electron to escape from the metal surface is called:",
+                options: ["Threshold Energy", "Work Function", "Kinetic Energy", "Potential Energy"],
+                correct: 1,
+                topic: "Basics",
+                explanation: "The minimum energy required to pull an electron out from the surface of a metal is called the Work Function (Φ₀)."
+            },
+            {
+                id: 2,
+                text: "In the photoelectric effect, the saturation current depends mainly on:",
+                options: ["Frequency of incident light", "Intensity of incident light", "Work function of metal", "Stopping potential"],
+                correct: 1,
+                topic: "Photoelectric Effect",
+                explanation: "Saturation current is directly proportional to the intensity of incident radiation (number of photons)."
+            },
+            {
+                id: 3,
+                text: "The slope of the graph between stopping potential (V₀) and frequency (ν) of incident radiation is equal to:",
+                options: ["h", "e", "h/e", "e/h"],
+                correct: 2,
+                topic: "Einstein's Equation",
+                explanation: "From Einstein's equation, V₀ = (h/e)ν - (Φ₀/e). The slope of the V₀ vs ν graph is h/e."
+            },
+            {
+                id: 4,
+                text: "Which of the following statements about photons is FALSE?",
+                options: ["Photons have no rest mass", "Photon energy depends on intensity", "Photons are electrically neutral", "Photon momentum is h/λ"],
+                correct: 1,
+                topic: "Photon Picture",
+                explanation: "Photon energy (E=hν) depends only on frequency, not intensity. Intensity determines the number of photons."
+            },
+            {
+                id: 5,
+                text: "According to the de Broglie hypothesis, the wavelength (λ) associated with a particle of momentum 'p' is:",
+                options: ["λ = p/h", "λ = h/p", "λ = hp", "λ = h/p²"],
+                correct: 1,
+                topic: "De Broglie Waves",
+                explanation: "De Broglie proposed that wavelength λ = h/p = h/mv."
+            },
+            {
+                id: 6,
+                text: "The de Broglie wavelength associated with an electron accelerated through a potential difference of V volts is approximately:",
+                options: ["12.27 / √V nm", "1.227 / √V nm", "1.227 √V nm", "12.27 √V nm"],
+                correct: 1,
+                topic: "Electron Wavelength",
+                explanation: "For an electron, λ = 1.227 / √V nm."
+            },
+            {
+                id: 7,
+                text: "The Davisson-Germer experiment experimentally verified:",
+                options: ["Particle nature of electrons", "Wave nature of electrons", "Photoelectric effect", "Uncertainty principle"],
+                correct: 1,
+                topic: "Experiments",
+                explanation: "Davisson and Germer observed diffraction of electrons by crystals, confirming the wave nature of electrons."
+            },
+            {
+                id: 8,
+                text: "Below the threshold frequency (ν₀), photoelectric emission:",
+                options: ["Occurs if intensity is high", "Occurs if exposure time is long", "Does not occur at all", "Occurs with zero kinetic energy"],
+                correct: 2,
+                topic: "Threshold Frequency",
+                explanation: "Below threshold frequency ν₀, no photoelectric emission takes place, no matter how high the intensity is."
+            },
+            {
+                id: 9,
+                text: "The maximum kinetic energy of emitted photoelectrons depends on:",
+                options: ["Intensity of light", "Frequency of light", "Time of exposure", "Distance of source"],
+                correct: 1,
+                topic: "Kinetic Energy",
+                explanation: "Max KE increases linearly with frequency but is independent of intensity."
+            },
+            {
+                id: 10,
+                text: "If a proton and an electron have the same kinetic energy, which one has the longer de Broglie wavelength?",
+                options: ["Proton", "Electron", "Both have same wavelength", "Cannot be determined"],
+                correct: 1,
+                topic: "De Broglie Waves",
+                explanation: "λ = h/√(2mK). Since mass of electron is much smaller than proton, electron has a longer wavelength."
+            },
+            {
+                id: 11,
+                text: "The time lag between the incidence of light and the emission of photoelectrons is of the order of:",
+                options: ["10⁻⁹ s or less", "10⁻³ s", "1 second", "10 minutes"],
+                correct: 0,
+                topic: "Photoelectric Effect",
+                explanation: "Photoelectric emission is an instantaneous process with a time lag of 10⁻⁹ s or less."
+            },
+            {
+                id: 12,
+                text: "In the intercept of the graph between Stopping Potential (V₀) and Frequency (ν), the intercept on the potential axis represents:",
+                options: ["Threshold Frequency", "Planck's Constant", "- Φ₀/e", "Work Function"],
+                correct: 2,
+                topic: "Einstein's Equation",
+                explanation: "Rearranging Einstein's equation: V₀ = (h/e)ν - (Φ₀/e). The y-intercept is -Φ₀/e."
+            },
+            {
+                id: 13,
+                text: "Which of the following metals has the lowest work function?",
+                options: ["Platinum", "Cesium", "Copper", "Aluminum"],
+                correct: 1,
+                topic: "Work Function",
+                explanation: "Cesium (Cs) has the lowest work function (2.14 eV) among common metals shown in the table."
+            },
+            {
+                id: 14,
+                text: "If the momentum of a particle is doubled, its de Broglie wavelength will:",
+                options: ["Double", "Become half", "Become four times", "Remain same"],
+                correct: 1,
+                topic: "De Broglie Waves",
+                explanation: "Since λ = h/p, if momentum p is doubled, wavelength λ becomes half."
+            },
+            {
+                id: 15,
+                text: "Matter waves (de Broglie waves) are:",
+                options: ["Electromagnetic waves", "Mechanical waves", "Probability waves", "Longitudinal waves"],
+                correct: 2,
+                topic: "Matter Waves",
+                explanation: "Matter waves are not EM waves; they are associated with probability amplitude (Born's interpretation)."
+            }
+        ];
+
+        const quizApp = {
+            idx: 0, answers: Array(questions.length).fill(null), timer: 900, interval: null,
+
+            start: function() {
+                this.idx = 0; this.answers.fill(null); this.timer = 900;
+                document.getElementById('screen-start').classList.add('hidden');
+                document.getElementById('screen-result').classList.add('hidden');
+                document.getElementById('screen-result').classList.remove('flex');
+                const quizScreen = document.getElementById('screen-quiz');
+                quizScreen.classList.remove('hidden');
+                quizScreen.classList.add('flex');
+                this.renderQ();
+                this.startTimer();
+            },
+
+            startTimer: function() {
+                clearInterval(this.interval);
+                this.interval = setInterval(() => {
+                    if(this.timer <= 0) { this.finish(); return; }
+                    this.timer--;
+                    const m = Math.floor(this.timer / 60);
+                    const s = this.timer % 60;
+                    document.getElementById('timer').innerText = `${m}:${s < 10 ? '0'+s : s}`;
+                }, 1000);
+            },
+
+            renderQ: function() {
+                const q = questions[this.idx];
+                document.getElementById('q-idx').innerText = this.idx + 1;
+                document.getElementById('q-text').innerText = q.text;
+                const box = document.getElementById('options-box');
+                box.innerHTML = '';
+                const nextBtn = document.getElementById('btn-next');
+                nextBtn.disabled = true;
+                nextBtn.innerText = (this.idx === questions.length - 1) ? "Submit Quiz" : "Next Question";
+
+                q.options.forEach((opt, i) => {
+                    const div = document.createElement('div');
+                    div.className = 'quiz-option';
+                    div.innerHTML = `<div class="quiz-circle"></div><span class="text-slate-300 font-medium">${opt}</span>`;
+                    div.onclick = () => this.select(i, div);
+                    box.appendChild(div);
+                });
+            },
+
+            select: function(optIdx, el) {
+                this.answers[this.idx] = optIdx;
+                document.querySelectorAll('.quiz-option').forEach(x => x.classList.remove('selected'));
+                el.classList.add('selected');
+                document.getElementById('btn-next').disabled = false;
+            },
+
+            next: function() {
+                if(this.idx < questions.length - 1) { this.idx++; this.renderQ(); } 
+                else { this.finish(); }
+            },
+
+            finish: function() {
+                clearInterval(this.interval);
+                let correctCount = 0;
+                let topicStats = {};
+
+                questions.forEach((q, i) => {
+                    const isCorrect = (this.answers[i] === q.correct);
+                    if(isCorrect) correctCount++;
+                    if(!topicStats[q.topic]) topicStats[q.topic] = { total: 0, right: 0 };
+                    topicStats[q.topic].total++;
+                    if(isCorrect) topicStats[q.topic].right++;
+                });
+
+                document.getElementById('screen-quiz').classList.add('hidden');
+                document.getElementById('screen-quiz').classList.remove('flex');
+                const resultScreen = document.getElementById('screen-result');
+                resultScreen.classList.remove('hidden');
+                resultScreen.classList.add('flex');
+
+                document.getElementById('score').innerText = correctCount;
+                const pct = Math.round((correctCount / questions.length) * 100);
+                document.getElementById('score-text').innerText = `${pct}% Accuracy`;
+                const deg = (correctCount / questions.length) * 360;
+                document.getElementById('chart-pie').style.background = `conic-gradient(#22c55e 0deg ${deg}deg, #ef4444 ${deg}deg 360deg)`;
+                document.getElementById('pie-text').innerText = `${pct}%`;
+
+                const barBox = document.getElementById('chart-bars');
+                const graphBox = document.getElementById('topic-graph');
+                barBox.innerHTML = '';
+                graphBox.innerHTML = '';
+
+                for (const [topic, data] of Object.entries(topicStats)) {
+                    const topicPct = Math.round((data.right / data.total) * 100);
+                    barBox.innerHTML += `
+                        <div class="text-sm">
+                            <div class="flex justify-between text-slate-400 mb-1">
+                                <span class="font-medium text-white">${topic}</span>
+                                <span>${data.right}/${data.total}</span>
+                            </div>
+                            <div class="bar-bg"><div class="bar-fill" style="width: ${topicPct}%"></div></div>
+                        </div>`;
+                    graphBox.innerHTML += `
+                        <div class="graph-bar-group">
+                            <div class="graph-bar" style="height: ${topicPct}%;">
+                                <div class="graph-value">${topicPct}%</div>
+                            </div>
+                            <div class="graph-label">${topic}</div>
+                        </div>`;
+                }
+
+                finishQuizInternal(); 
+
+                const reviewBox = document.getElementById('review-box');
+                reviewBox.innerHTML = '';
+                questions.forEach((q, i) => {
+                    const isRight = (this.answers[i] === q.correct);
+                    reviewBox.innerHTML += `
+                        <div class="p-4 rounded-xl border border-white/5 bg-[#1e293b] ${isRight ? 'border-l-4 border-l-green-500' : 'border-l-4 border-l-red-500'}">
+                            <p class="font-bold text-white mb-2 text-base">Q${i+1}: ${q.text}</p>
+                            <div class="text-sm mb-2"><span class="${isRight ? 'text-green-400' : 'text-red-400'}">Answer: ${this.answers[i]!==null?q.options[this.answers[i]]:'Skipped'}</span></div>
+                            <div class="text-xs text-slate-400">${q.explanation}</div>
+                        </div>`;
+                });
+            }
+        };
+    </script>
+</body>
+</html>

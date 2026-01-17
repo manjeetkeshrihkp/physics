@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lecture Player | JEE Matrix</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=Merriweather:ital,wght@0,300;0,400;0,700;1,400&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { 
+                        sans: ['Inter', 'sans-serif'],
+                        serif: ['Merriweather', 'serif'],
+                    },
+                    colors: { background: '#020617' },
+                    animation: { 'fade-in': 'fadeIn 0.5s ease-out forwards' },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0', transform: 'translateY(10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #020617;
+            color: #f8fafc;
+            background-image: linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            min-height: 100vh;
+        }
+
+        /* Video Container (16:9) */
+        .video-container {
+            position: relative;
+            padding-bottom: 56.25%;
+            height: 0;
+            overflow: hidden;
+            background: #000;
+            border-radius: 16px;
+            box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .video-container iframe {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        /* Notes Specific Styles */
+        .notes-content p, .notes-content li {
+            font-family: 'Merriweather', serif;
+            color: #cbd5e1;
+            line-height: 1.8;
+            margin-bottom: 1rem;
+        }
+        .notes-content h2 {
+            font-family: 'Inter', sans-serif;
+            color: #f87171; /* Red-400 */
+            font-weight: 700;
+            font-size: 1.5rem;
+            margin-top: 3rem;
+            margin-bottom: 1rem;
+            border-left: 4px solid #ef4444; /* Red-500 */
+            padding-left: 1rem;
+        }
+        .notes-content h3 {
+            font-family: 'Inter', sans-serif;
+            color: #f8fafc;
+            font-weight: 600;
+            font-size: 1.25rem;
+            margin-top: 2rem;
+            margin-bottom: 0.75rem;
+        }
+        .notes-content strong { color: #fff; }
+        .notes-content ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1.5rem; }
+        .notes-content ol { list-style-type: decimal; padding-left: 1.5rem; margin-bottom: 1.5rem; }
+        
+        .formula-box {
+            background-color: #1e293b;
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin: 1.5rem 0;
+            text-align: center;
+            font-family: 'Inter', sans-serif;
+            overflow-x: auto;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+
+        .note-highlight {
+            background-color: rgba(248, 113, 113, 0.1); 
+            border-left: 4px solid #f87171;
+            padding: 1rem 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 0 8px 8px 0;
+            font-style: italic;
+        }
+
+        /* --- CHAPTER 12 ANIMATIONS (Ported from Atoms.html) --- */
+        .diagram-container {
+            background-color: #0f172a;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 30px;
+            margin: 2rem 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            text-align: center;
+        }
+        .caption { margin-top: 15px; font-size: 0.85rem; color: #94a3b8; font-family: 'Inter', sans-serif; font-weight: bold; }
+
+        /* Animation 1: Rutherford Scattering */
+        .scattering-box { width: 300px; height: 200px; position: relative; display: flex; align-items: center; justify-content: center; }
+        .nucleus-center { width: 12px; height: 12px; background-color: #fbbf24; border-radius: 50%; box-shadow: 0 0 10px #fbbf24; position: relative; z-index: 10; }
+        .alpha-particle { width: 6px; height: 6px; background-color: #fff; border-radius: 50%; position: absolute; left: 0; }
+        .ap1 { top: 30px; animation: passThrough 2s infinite linear; }
+        .ap2 { top: 85px; animation: deflect 2s infinite linear; }
+        .ap3 { top: 100px; animation: bounceBack 2s infinite linear; }
+        @keyframes passThrough { 0% { left: 0; } 100% { left: 300px; } }
+        @keyframes deflect { 0% { left: 0; top: 85px; } 40% { left: 130px; top: 85px; } 100% { left: 300px; top: 10px; } }
+        @keyframes bounceBack { 0% { left: 0; } 45% { left: 135px; } 100% { left: 0; } }
+
+        /* Animation 2: Bohr Model Transitions */
+        .bohr-box { width: 300px; height: 300px; position: relative; display: flex; align-items: center; justify-content: center; }
+        .orbit { position: absolute; border: 1px dashed #64748b; border-radius: 50%; }
+        .n1 { width: 60px; height: 60px; } .n2 { width: 140px; height: 140px; } .n3 { width: 220px; height: 220px; }
+        .bohr-electron { width: 10px; height: 10px; background-color: #34d399; border-radius: 50%; position: absolute; animation: orbitalJump 6s infinite ease-in-out; }
+        .emitted-photon {
+            width: 15px; height: 15px; background: radial-gradient(circle, #60a5fa, transparent);
+            position: absolute; opacity: 0; animation: photonEmit 6s infinite linear;
+        }
+        @keyframes orbitalJump { 
+            0%, 40% { transform: translate(110px, 0); } /* On n=3 */
+            45%, 90% { transform: translate(70px, 0); } /* Jump to n=2 */
+            95%, 100% { transform: translate(30px, 0); } /* Jump to n=1 */
+        }
+        @keyframes photonEmit {
+            40% { opacity: 0; top: 150px; left: 220px; }
+            45% { opacity: 1; top: 150px; left: 220px; }
+            55% { opacity: 0; top: 150px; left: 350px; }
+        }
+
+        /* Animation 3: De Broglie Standing Wave */
+        .wave-orbit-box { width: 300px; height: 300px; position: relative; display: flex; align-items: center; justify-content: center; }
+        .guide-circle { width: 200px; height: 200px; border: 1px dashed #475569; border-radius: 50%; position: absolute; }
+        .standing-wave-svg { position: absolute; width: 240px; height: 240px; animation: wavePhase 2s infinite linear; }
+        @keyframes wavePhase { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Quiz Specifics */
+        .quiz-option {
+            background: #1e293b;
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 1rem 1.25rem;
+            border-radius: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .quiz-option:hover { background: #334155; }
+        .quiz-option.selected { background: rgba(248, 113, 113, 0.2); border-color: #f87171; }
+        .quiz-circle { width: 20px; height: 20px; border: 2px solid #64748b; border-radius: 50%; flex-shrink: 0; }
+        .quiz-option.selected .quiz-circle { border-color: #f87171; background: #f87171; }
+
+        /* Pie Chart */
+        .pie-chart {
+            width: 120px; height: 120px; border-radius: 50%;
+            margin: 15px 0;
+            background: conic-gradient(#22c55e 0deg, #ef4444 0deg);
+            position: relative;
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+        }
+        .pie-inner {
+            position: absolute; top: 15px; left: 15px;
+            width: 90px; height: 90px;
+            background: #1e293b; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; color: #fff;
+        }
+
+        /* Graph Container */
+        .graph-container {
+            height: 160px;
+            padding-top: 25px;
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+            padding-bottom: 5px;
+            border-bottom: 2px solid rgba(255,255,255,0.1);
+            margin-top: 20px;
+            overflow-x: auto;
+            width: 100%;
+            padding-right: 10px;
+        }
+        .graph-bar-group {
+            flex: 0 0 auto;
+            min-width: 45px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100%;
+            justify-content: flex-end;
+        }
+        .graph-bar {
+            width: 100%;
+            background: linear-gradient(to top, #ef4444, #f87171);
+            border-radius: 4px 4px 0 0;
+            transition: height 1s ease-out;
+            position: relative;
+            min-height: 4px;
+        }
+        .graph-label {
+            margin-top: 8px; font-size: 0.65rem; color: #94a3b8;
+            text-align: center; width: 100%; white-space: nowrap;
+            overflow: hidden; text-overflow: ellipsis;
+        }
+        .graph-value {
+            position: absolute; top: -18px; left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.65rem; color: #fff; font-weight: bold;
+        }
+        .bar-bg { background: rgba(255,255,255,0.05); height: 6px; border-radius: 99px; overflow: hidden; }
+        .bar-fill { height: 100%; background: #f87171; transition: width 1s ease; }
+    </style>
+</head>
+<body class="flex flex-col h-screen overflow-hidden">
+
+    <header class="h-16 border-b border-white/5 bg-[#020617]/90 backdrop-blur-md flex items-center justify-between px-6 z-[100] flex-shrink-0 relative">
+        <div class="flex items-center gap-4">
+            <a href="physics.html" class="w-10 h-10 rounded-full hover:bg-white/5 flex items-center justify-center text-slate-400 hover:text-white transition-all group cursor-pointer" title="Back to Chapters">
+                <svg class="w-5 h-5 group-hover:-translate-x-1 transition-transform pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+            </a>
+            <div>
+                <p class="text-[10px] uppercase tracking-widest text-red-400 font-bold" id="header-subtitle">Now Watching</p>
+                <h1 id="header-title" class="text-sm md:text-base font-bold text-white truncate max-w-[200px] md:max-w-md">Atoms</h1>
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+            <button id="quiz-back-btn" onclick="exitQuiz()" class="hidden px-3 py-1.5 text-xs font-bold bg-white/10 hover:bg-white/20 rounded-lg text-white transition-colors border border-white/10">
+                Back to Lecture
+            </button>
+            <span class="text-xs text-slate-500 font-medium hidden md:block" id="save-status">Tracking Progress...</span>
+            <div class="flex items-center gap-2 bg-slate-800 px-3 py-1 rounded-full border border-white/10">
+                 <div class="w-2 h-2 rounded-full bg-orange-500 animate-pulse" id="live-indicator"></div>
+                 <span class="text-xs font-bold text-white" id="live-percent">0%</span>
+            </div>
+        </div>
+        <div id="visual-progress" class="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-red-500 to-pink-500 transition-all duration-700 ease-in-out shadow-[0_0_10px_rgba(248,113,113,0.5)]" style="width: 0%"></div>
+    </header>
+
+    <main class="flex-grow overflow-y-auto p-4 md:p-8 flex flex-col items-center relative">
+        
+        <div id="content-view" class="w-full max-w-4xl animate-fade-in pb-20">
+            
+            <div class="video-container mb-6">
+                <iframe id="main-player" src="https://www.youtube.com/embed/NDNQRQdaNkM?autoplay=0&rel=0&modestbranding=1" title="Video Player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+            </div>
+
+            <div class="flex flex-col md:flex-row items-center justify-between gap-4 p-6 bg-[#0f172a] border border-white/5 rounded-2xl shadow-lg mb-10">
+                <div class="w-full md:w-auto">
+                    <h2 id="video-title" class="text-2xl font-bold text-white mb-1">Atoms</h2>
+                    <p class="text-slate-400 text-sm">Physics • Class 12 • Chapter 12</p>
+                </div>
+                <div class="flex items-center gap-3 w-full md:w-auto">
+                    <button id="mark-done-btn" onclick="toggleStatus()" class="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-slate-800 border border-slate-600 transition-all text-sm font-semibold text-slate-200 group cursor-not-allowed opacity-50">
+                        <div class="w-5 h-5 rounded-full border-2 border-slate-400 group-hover:border-white flex items-center justify-center">
+                            <svg class="w-3 h-3 text-white opacity-0 transition-opacity check-icon" fill="currentColor" viewBox="0 0 20 20"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"></path></svg>
+                        </div>
+                        <span class="btn-text" id="mark-btn-text">Locked (Studying...)</span>
+                    </button>
+                    
+                    <button onclick="startQuiz()" class="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-500 hover:to-pink-500 text-white font-bold shadow-lg shadow-red-500/20 hover:shadow-red-500/40 hover:-translate-y-0.5 transition-all group">
+                        <span>Take Test</span>
+                        <svg class="w-5 h-5 group-hover:rotate-6 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                    </button>
+                </div>
+            </div>
+
+            <div id="detailed-notes" class="notes-content">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="h-8 w-1 bg-red-500 rounded-full"></div>
+                    <h2 class="!m-0 !border-0 !p-0 text-3xl text-white">Detailed Physics Notes</h2>
+                </div>
+                
+                <p class="text-slate-400 italic mb-8">Comprehensive notes based on NCERT Class 12 Physics - Chapter 12</p>
+
+                <section id="intro">
+                    <h2>1. Introduction</h2>
+                    <p>J.J. Thomson (1898) proposed the first model of the atom, often called the <strong>plum pudding model</strong>. He suggested that the positive charge is uniformly distributed throughout the atom, and electrons are embedded in it like seeds in a watermelon. This model failed to explain the results of alpha-particle scattering experiments.</p>
+                </section>
+
+                <section id="rutherford">
+                    <h2>2. Rutherford's Nuclear Model</h2>
+                    <p>Ernest Rutherford, along with Hans Geiger and Ernest Marsden, performed the famous \(\alpha\)-particle scattering experiment.</p>
+                    
+                    <h3>The Experiment</h3>
+                    <p>A beam of high-energy \(\alpha\)-particles (He\(^{2+}\)) was directed at a thin gold foil.</p>
+                    
+                    <div class="diagram-container">
+                        <div class="scattering-box">
+                            <div class="nucleus-center"></div>
+                            <div class="alpha-particle ap1"></div> <div class="alpha-particle ap2"></div> <div class="alpha-particle ap3"></div> 
+                        </div>
+                        <div class="caption">
+                            Trajectories of alpha particles. Most pass straight through (ap1), some deflect (ap2), and very few bounce back (ap3).
+                        </div>
+                    </div>
+
+                    <h3>Observations & Conclusions</h3>
+                    <ul>
+                        <li><strong>Observation:</strong> Most particles passed straight through. <br><strong>Conclusion:</strong> Most of the space inside the atom is empty.</li>
+                        <li><strong>Observation:</strong> Some were deflected by large angles. <br><strong>Conclusion:</strong> Positive charge is concentrated in a tiny central core called the <strong>Nucleus</strong>.</li>
+                        <li><strong>Observation:</strong> A very small fraction (1 in 8000) rebounded (\(180^\circ\)). <br><strong>Conclusion:</strong> The nucleus contains nearly all the mass of the atom.</li>
+                    </ul>
+
+                    <h3>Impact Parameter (\(b\))</h3>
+                    <p>The perpendicular distance of the velocity vector of the \(\alpha\)-particle from the centre of the nucleus when it is far away.</p>
+                    <ul>
+                        <li>If \(b\) is large, scattering angle \(\theta\) is small.</li>
+                        <li>If \(b \approx 0\) (head-on collision), \(\theta \approx 180^\circ\).</li>
+                    </ul>
+                </section>
+
+                <section id="spectra">
+                    <h2>3. Atomic Spectra</h2>
+                    <p>When an atomic gas or vapor is excited at low pressure, the emitted radiation has a spectrum containing certain specific wavelengths only. This is called a <strong>Line Spectrum</strong>.</p>
+                    
+                    <h3>Spectral Series of Hydrogen</h3>
+                    <p>The frequencies of light emitted by hydrogen follow a pattern given by the Rydberg formula:</p>
+                    <div class="formula-box">
+                        $$ \frac{1}{\lambda} = R \left( \frac{1}{n_f^2} - \frac{1}{n_i^2} \right) $$
+                    </div>
+                    <p>Where \(R = 1.097 \times 10^7 \, \text{m}^{-1}\) is the Rydberg constant.</p>
+                    
+                    <table class="w-full text-sm text-left border-collapse border border-white/10 rounded-lg overflow-hidden mt-4">
+                        <thead class="bg-white/10 text-red-300">
+                            <tr>
+                                <th class="p-3">Series</th>
+                                <th class="p-3">Region</th>
+                                <th class="p-3">Formula (\(n_f, n_i\))</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-white/10">
+                            <tr>
+                                <td class="p-3">Lyman</td>
+                                <td class="p-3">Ultraviolet</td>
+                                <td class="p-3">\(n_f=1, n_i=2,3...\)</td>
+                            </tr>
+                            <tr>
+                                <td class="p-3">Balmer</td>
+                                <td class="p-3">Visible</td>
+                                <td class="p-3">\(n_f=2, n_i=3,4...\)</td>
+                            </tr>
+                            <tr>
+                                <td class="p-3">Paschen</td>
+                                <td class="p-3">Infrared</td>
+                                <td class="p-3">\(n_f=3, n_i=4,5...\)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section id="bohr">
+                    <h2>4. Bohr Model of the Hydrogen Atom</h2>
+                    <p>Niels Bohr modified Rutherford's model by applying quantum ideas.</p>
+                    
+                    <h3>Bohr's Postulates</h3>
+                    <ol>
+                        <li><strong>Stationary Orbits:</strong> Electrons revolve in stable orbits without radiating energy.</li>
+                        <li><strong>Quantization Condition:</strong> The angular momentum \(L\) of the electron is an integral multiple of \(h/2\pi\).
+                            <div class="formula-box">$$ L = mvr = \frac{nh}{2\pi} \quad (n=1, 2, 3...) $$</div>
+                        </li>
+                        <li><strong>Frequency Condition:</strong> Energy is emitted only when an electron jumps from a higher orbit (\(E_i\)) to a lower orbit (\(E_f\)).
+                            <div class="formula-box">$$ h\nu = E_i - E_f $$</div>
+                        </li>
+                    </ol>
+
+                    <div class="diagram-container">
+                        <div class="bohr-box">
+                            <div class="nucleus-center"></div>
+                            <div class="orbit n1"></div>
+                            <div class="orbit n2"></div>
+                            <div class="orbit n3"></div>
+                            <div class="bohr-electron"></div>
+                            <div class="emitted-photon"></div>
+                        </div>
+                        <div class="caption">
+                            
+                            Electron jumping from higher to lower orbits emits a photon (blue flash).
+                        </div>
+                    </div>
+
+                    <h3>Radii of Bohr Orbits</h3>
+                    <p>The radius of the \(n\)-th orbit is given by:</p>
+                    <div class="formula-box">
+                        $$ r_n = \frac{n^2 h^2 \epsilon_0}{\pi m e^2} $$
+                    </div>
+                    <p>For hydrogen (\(n=1\)), the Bohr radius \(a_0 = 0.529 \text{ \AA}\). Thus, \(r_n = n^2 a_0\).</p>
+                </section>
+
+                <section id="energy">
+                    <h2>5. Energy Levels</h2>
+                    <p>The total energy of the electron in the \(n\)-th orbit is:</p>
+                    <div class="formula-box">
+                        $$ E_n = -\frac{me^4}{8\epsilon_0^2 h^2} \left( \frac{1}{n^2} \right) \approx -\frac{13.6}{n^2} \, \text{eV} $$
+                    </div>
+                    <ul>
+                        <li><strong>Ground State (\(n=1\)):</strong> \(E_1 = -13.6\) eV. This is the most stable state.</li>
+                        <li><strong>Excited States:</strong> \(E_2 = -3.4\) eV, \(E_3 = -1.51\) eV, etc.</li>
+                        <li><strong>Ionization Energy:</strong> The energy required to remove the electron from the ground state to infinity (\(n=\infty, E=0\)) is \(13.6\) eV.</li>
+                    </ul>
+                </section>
+
+                <section id="debroglie">
+                    <h2>6. De Broglie's Explanation of Quantization</h2>
+                    <p>Louis de Broglie explained Bohr's second postulate (angular momentum quantization) using the wave nature of electrons.</p>
+                    <p>For an electron wave to be stable in an orbit, the circumference of the orbit must act as a <strong>standing wave</strong>. This means the circumference must be an integral multiple of the wavelength.</p>
+                    
+                    <div class="diagram-container">
+                        <div class="wave-orbit-box">
+                            <div class="guide-circle"></div>
+                            <svg class="standing-wave-svg" viewBox="0 0 100 100">
+                                <path d="M 50 5 Q 65 5 65 20 T 80 35 T 95 50 T 80 65 T 65 80 T 50 95 T 35 80 T 20 65 T 5 50 T 20 35 T 35 20 T 50 5" 
+                                      fill="none" stroke="#34d399" stroke-width="2" />
+                            </svg>
+                        </div>
+                        <div class="caption">
+                             A standing electron wave fitting perfectly into the orbit (\(2\pi r = n\lambda\)).
+                        </div>
+                    </div>
+
+                    <div class="formula-box">
+                        $$ 2\pi r = n\lambda $$
+                    </div>
+                    <p>Since \(\lambda = h/mv\) (De Broglie relation):</p>
+                    <div class="formula-box">
+                        $$ 2\pi r = n \frac{h}{mv} \implies mvr = \frac{nh}{2\pi} $$
+                    </div>
+                    <p>This derivation successfully connected the wave nature of matter with the quantization of angular momentum.</p>
+                </section>
+                <div class="mt-10 pt-6 border-t border-white/10 text-center text-slate-500 text-sm">
+                    BRO YOU CAN AND YOU WILL ⚡
+                </div>
+            </div>
+        </div>
+
+        <div id="quiz-view" class="w-full max-w-4xl flex-col items-center animate-fade-in hidden pb-20">
+            <div class="w-full bg-[#1e293b] border border-white/5 rounded-2xl p-4 mb-6 flex justify-between items-center shadow-lg">
+                <h2 class="text-xl font-bold text-white">Physics Master Quiz</h2>
+                <div class="px-3 py-1 bg-black/30 rounded-lg border border-white/10 font-mono text-lg text-white" id="timer">15:00</div>
+            </div>
+
+            <div id="screen-start" class="w-full bg-[#0f172a] border border-white/5 rounded-2xl p-8 text-center shadow-lg flex flex-col items-center">
+                <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-red-600 to-pink-600 flex items-center justify-center mb-6 shadow-lg shadow-red-500/20">
+                    <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </div>
+                <h2 class="text-3xl font-bold text-white mb-2">Practice Quiz</h2>
+                <p class="text-slate-400 mb-8">15 Questions • 15 Minutes • Board Level MCQs</p>
+                <button onclick="quizApp.start()" class="px-8 py-3 rounded-xl bg-white text-black font-bold hover:scale-105 transition-transform">Start Now</button>
+            </div>
+
+            <div id="screen-quiz" class="w-full hidden flex-col">
+                <div class="mb-6">
+                    <div class="text-red-400 font-bold text-sm tracking-wider mb-2">QUESTION <span id="q-idx">1</span>/15</div>
+                    <div id="q-text" class="text-xl md:text-2xl font-bold text-white leading-relaxed">Loading...</div>
+                </div>
+                <div id="options-box" class="space-y-3 mb-8 w-full"></div>
+                <div class="flex justify-end">
+                    <button id="btn-next" onclick="quizApp.next()" disabled class="px-6 py-3 rounded-xl bg-red-600 text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-red-500 transition-colors">Next Question</button>
+                </div>
+            </div>
+
+            <div id="screen-result" class="w-full hidden flex-col">
+                <div class="bg-[#1e293b] border border-white/5 rounded-2xl p-6 mb-6 flex flex-col md:flex-row items-center justify-between gap-6 shadow-lg">
+                    <div class="text-center md:text-left">
+                        <p class="text-slate-400 text-xs uppercase tracking-widest font-bold mb-1">Total Score</p>
+                        <div class="text-5xl font-black text-white"><span id="score">0</span><span class="text-2xl text-slate-500">/15</span></div>
+                        <div id="score-text" class="text-green-400 font-bold mt-2">0% Accuracy</div>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <div class="pie-chart" id="chart-pie">
+                            <div class="pie-inner" id="pie-text">0%</div>
+                        </div>
+                    </div>
+                    <div class="flex gap-3">
+                        <button onclick="quizApp.start()" class="px-5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition-colors border border-white/10">Retake Quiz</button>
+                        <button onclick="exitQuiz()" class="px-5 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-bold transition-colors">Finish & Save</button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <div class="bg-[#1e293b] border border-white/5 rounded-2xl p-6 shadow-lg">
+                        <div class="text-slate-400 text-xs uppercase tracking-widest font-bold mb-4 flex items-center gap-2">
+                            <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z"></path></svg>
+                            Topic Wise Performance
+                        </div>
+                        <div id="chart-bars" class="space-y-4"></div>
+                    </div>
+
+                    <div class="bg-[#1e293b] border border-white/5 rounded-2xl p-6 shadow-lg">
+                        <div class="text-slate-400 text-xs uppercase tracking-widest font-bold mb-4 flex items-center gap-2">
+                            <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path></svg>
+                            Analysis Graph
+                        </div>
+                        <div id="topic-graph" class="graph-container">
+                        </div>
+                    </div>
+                </div>
+
+                <h3 class="text-xl font-bold text-white mb-4 pl-1 border-l-4 border-red-500">Detailed Review</h3>
+                <div id="review-box" class="space-y-4 w-full"></div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // --- 1. SMART PROGRESS TRACKING LOGIC (UPDATED FOR CHAPTER 12) ---
+        const KEY_PROGRESS = 'physics_chapter_12_progress'; 
+        const KEY_STATE = 'physics_chapter_12_state';       
+
+        const LOCK_TIME = 6000; // 2 HOURS
+        const INTERVAL_DURATION = 1500; // 30 Minutes
+
+        const DEFAULT_STATE = {
+            manual: false, // Worth 50%
+            test: false,   // Worth 20%
+            timeIntervals: 0, // Max 4, worth 7.5% each (Total 30%)
+            timeSpentSeconds: 0 
+        };
+        
+        let chapterState = { ...DEFAULT_STATE };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadState();
+            startTimer();
+            updateUI();
+            saveAndCalculate(); 
+        });
+
+        function loadState() {
+            const savedState = localStorage.getItem(KEY_STATE);
+            if (savedState) {
+                try {
+                    const parsed = JSON.parse(savedState);
+                    chapterState = { ...DEFAULT_STATE, ...parsed };
+                    if(typeof chapterState.timeIntervals !== 'number') chapterState.timeIntervals = 0;
+                    if(typeof chapterState.timeSpentSeconds !== 'number') chapterState.timeSpentSeconds = 0;
+                } catch(e) {
+                    console.error("State load error, resetting", e);
+                    chapterState = { ...DEFAULT_STATE };
+                }
+            }
+        }
+
+        function saveAndCalculate() {
+            localStorage.setItem(KEY_STATE, JSON.stringify(chapterState));
+            
+            // MATH: 50% + 20% + (4 * 7.5%) = 100%
+            let percent = 0;
+            if (chapterState.manual) percent += 50;
+            if (chapterState.test) percent += 20;
+            percent += (chapterState.timeIntervals * 7.5);
+
+            if (percent > 100) percent = 100; 
+            
+            const displayPercent = Math.floor(percent);
+
+            localStorage.setItem(KEY_PROGRESS, displayPercent.toString());
+
+            const indicator = document.getElementById('live-indicator');
+            const txt = document.getElementById('live-percent');
+            const bar = document.getElementById('visual-progress');
+            
+            if(txt) txt.innerText = `${displayPercent}%`;
+            if(bar) bar.style.width = `${displayPercent}%`;
+            
+            if (indicator) {
+                if (displayPercent === 100) {
+                    indicator.classList.remove('bg-orange-500', 'animate-pulse');
+                    indicator.classList.add('bg-green-500');
+                } else {
+                    indicator.classList.add('bg-orange-500', 'animate-pulse');
+                    indicator.classList.remove('bg-green-500');
+                }
+            }
+        }
+
+        function startTimer() {
+            setInterval(() => {
+                chapterState.timeSpentSeconds++;
+                
+                // 1. INTERVAL CHECK
+                let currentIntervals = Math.floor(chapterState.timeSpentSeconds / INTERVAL_DURATION);
+                if (currentIntervals > 4) currentIntervals = 4;
+
+                if (currentIntervals > chapterState.timeIntervals) {
+                    chapterState.timeIntervals = currentIntervals;
+                    saveAndCalculate();
+                    const status = document.getElementById('save-status');
+                    if(status) {
+                        status.innerText = `Progress Added (+7.5%)`;
+                        setTimeout(() => status.innerText = "Tracking Progress...", 3000);
+                    }
+                }
+
+                // 2. UNLOCK CHECK
+                const isLockedUI = document.getElementById('mark-btn-text').innerText.includes('Locked');
+                if (chapterState.timeSpentSeconds >= LOCK_TIME && isLockedUI) {
+                    updateUI(); 
+                    const status = document.getElementById('save-status');
+                    if(status) status.innerText = "Chapter Unlocked!";
+                }
+
+                if (chapterState.timeSpentSeconds % 10 === 0) {
+                    localStorage.setItem(KEY_STATE, JSON.stringify(chapterState));
+                }
+            }, 1000);
+        }
+
+        function toggleStatus() {
+            if (chapterState.timeSpentSeconds < LOCK_TIME && !chapterState.manual) {
+                alert("You must watch this lecture for at least 2 hours before marking it as complete.");
+                return;
+            }
+            chapterState.manual = !chapterState.manual; 
+            updateUI(); 
+            saveAndCalculate(); 
+        }
+
+        function updateUI() {
+            const btn = document.getElementById('mark-done-btn');
+            if(!btn) return;
+            
+            const icon = btn.querySelector('.check-icon');
+            const text = document.getElementById('mark-btn-text');
+            const circle = btn.querySelector('div');
+            const isLocked = chapterState.timeSpentSeconds < LOCK_TIME && !chapterState.manual;
+
+            if (chapterState.manual) {
+                btn.classList.remove('bg-slate-800', 'opacity-50', 'cursor-not-allowed');
+                btn.classList.add('bg-green-600', 'hover:bg-green-500', 'border-green-500', 'text-white');
+                circle.classList.remove('border-slate-400');
+                circle.classList.add('border-white', 'bg-white/20');
+                icon.classList.remove('opacity-0');
+                text.innerText = "Completed";
+            } else if (isLocked) {
+                btn.classList.add('bg-slate-800', 'opacity-50', 'cursor-not-allowed');
+                btn.classList.remove('bg-green-600', 'hover:bg-green-500', 'border-green-500', 'text-white');
+                circle.classList.add('border-slate-400');
+                circle.classList.remove('border-white', 'bg-white/20');
+                icon.classList.add('opacity-0');
+                text.innerText = "Locked (Studying...)";
+            } else {
+                btn.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-green-600');
+                btn.classList.add('bg-slate-800', 'hover:bg-slate-700');
+                circle.classList.add('border-slate-400');
+                icon.classList.add('opacity-0');
+                text.innerText = "Mark Complete";
+            }
+        }
+
+        function finishQuizInternal() {
+            if (!chapterState.test) {
+                chapterState.test = true;
+                saveAndCalculate();
+            }
+        }
+
+        const contentView = document.getElementById('content-view');
+        const quizView = document.getElementById('quiz-view');
+        const headerSub = document.getElementById('header-subtitle');
+        const quizBackBtn = document.getElementById('quiz-back-btn');
+        const saveStatus = document.getElementById('save-status');
+
+        function startQuiz() {
+            contentView.classList.add('hidden');
+            quizView.classList.remove('hidden');
+            quizView.classList.add('flex');
+            headerSub.innerText = "Quiz Mode";
+            quizBackBtn.classList.remove('hidden');
+            saveStatus.classList.add('hidden');
+            const iframe = document.getElementById('main-player');
+            const src = iframe.src;
+            iframe.src = ''; 
+            iframe.setAttribute('data-src', src); 
+        }
+
+        function exitQuiz() {
+            quizView.classList.add('hidden');
+            quizView.classList.remove('flex');
+            contentView.classList.remove('hidden');
+            headerSub.innerText = "Now Watching";
+            quizBackBtn.classList.add('hidden');
+            saveStatus.classList.remove('hidden');
+            const iframe = document.getElementById('main-player');
+            const savedSrc = iframe.getAttribute('data-src');
+            if(savedSrc) iframe.src = savedSrc;
+        }
+
+        // --- QUESTION DATA (From TEST.HTML) ---
+        const questions = [
+            {
+                id: 1,
+                text: "The first model of atom (Plum Pudding Model) was proposed by:",
+                options: ["Rutherford", "Niels Bohr", "J.J. Thomson", "Ernst Marsden"],
+                correct: 2,
+                topic: "Atomic Models",
+                explanation: "In 1898, J.J. Thomson proposed the first model of atom, picturesquely called the plum pudding model."
+            },
+            {
+                id: 2,
+                text: "In Rutherford's alpha-particle scattering experiment, the backward scattering (deflection > 90°) occurs for:",
+                options: ["Most alpha-particles", "About 50% of alpha-particles", "Very small fraction (1 in 8000)", "No alpha-particles"],
+                correct: 2,
+                topic: "Rutherford's Experiment",
+                explanation: "Only about 1 in 8000 alpha-particles deflect by more than 90°, indicating a small, dense, positively charged nucleus."
+            },
+            {
+                id: 3,
+                text: "According to Bohr's second postulate, the angular momentum of an electron in a stable orbit is:",
+                options: ["Integral multiple of h/π", "Integral multiple of h/2π", "Integral multiple of h", "Any real value"],
+                correct: 1,
+                topic: "Bohr's Postulates",
+                explanation: "Bohr's second postulate states angular momentum L = nh/2π, where n is an integer."
+            },
+            {
+                id: 4,
+                text: "The total energy of an electron in the ground state of a hydrogen atom is:",
+                options: ["-13.6 eV", "+13.6 eV", "-3.4 eV", "0 eV"],
+                correct: 0,
+                topic: "Energy Levels",
+                explanation: "The ground state energy (n=1) of a hydrogen atom is -13.6 eV."
+            },
+            {
+                id: 5,
+                text: "The series of lines in the hydrogen spectrum that lies in the visible region is called:",
+                options: ["Lyman series", "Balmer series", "Paschen series", "Brackett series"],
+                correct: 1,
+                topic: "Spectral Series",
+                explanation: "Balmer series was the first observed series in the visible region of the hydrogen spectrum."
+            },
+            {
+                id: 6,
+                text: "The radius of the innermost orbit (Bohr radius) of a hydrogen atom is approximately:",
+                options: ["5.29 x 10⁻¹¹ m", "1.06 x 10⁻¹⁰ m", "2.12 x 10⁻¹⁰ m", "5.29 x 10⁻¹² m"],
+                correct: 0,
+                topic: "Bohr Radius",
+                explanation: "The Bohr radius a₀ is calculated as 5.29 x 10⁻¹¹ m (approx 0.53 Å)."
+            },
+            {
+                id: 7,
+                text: "According to the Rydberg formula, the wave number (1/λ) is proportional to:",
+                options: ["Z", "Z²", "1/Z", "1/Z²"],
+                correct: 1,
+                topic: "Rydberg Formula",
+                explanation: "The wave number is proportional to Z² (where Z is atomic number), as energy levels scale with Z². For Hydrogen Z=1."
+            },
+            {
+                id: 8,
+                text: "The ionization energy of a hydrogen atom is:",
+                options: ["13.6 eV", "-13.6 eV", "3.4 eV", "10.2 eV"],
+                correct: 0,
+                topic: "Ionization Energy",
+                explanation: "The minimum energy required to free the electron from the ground state (to E=0) is +13.6 eV."
+            },
+            {
+                id: 9,
+                text: "When an electron jumps from a higher energy state (n₂) to a lower energy state (n₁), a photon is emitted with energy:",
+                options: ["E₂ + E₁", "E₂ - E₁", "E₁ - E₂", "E₁E₂"],
+                correct: 1,
+                topic: "Energy Transitions",
+                explanation: "According to Bohr's third postulate, hν = Eᵢ - Ef (Initial minus Final energy)."
+            },
+            {
+                id: 10,
+                text: "The short wavelength limit of the Lyman series corresponds to transition from:",
+                options: ["n=2 to n=1", "n=∞ to n=1", "n=3 to n=2", "n=∞ to n=2"],
+                correct: 1,
+                topic: "Spectral Series",
+                explanation: "The shortest wavelength (highest energy) in Lyman series occurs for the transition from n=∞ to n=1."
+            },
+            {
+                id: 11,
+                text: "The impact parameter (b) for a head-on collision of an alpha particle with a nucleus is:",
+                options: ["Zero", "Maximum", "Infinite", "Equal to radius of nucleus"],
+                correct: 0,
+                topic: "Impact Parameter",
+                explanation: "For a head-on collision, the alpha particle is directed straight at the nucleus, so the impact parameter b is zero."
+            },
+            {
+                id: 12,
+                text: "Which of the following spectral series lies in the Ultraviolet region?",
+                options: ["Balmer", "Paschen", "Lyman", "Pfund"],
+                correct: 2,
+                topic: "Spectral Regions",
+                explanation: "The Lyman series corresponds to transitions to n=1 and lies in the ultraviolet region."
+            },
+            {
+                id: 13,
+                text: "The de Broglie hypothesis explains Bohr's quantization condition by assuming the electron orbit is a:",
+                options: ["Traveling wave", "Standing wave", "Transverse wave", "Electromagnetic wave"],
+                correct: 1,
+                topic: "De Broglie Explanation",
+                explanation: "De Broglie explained quantized orbits as circular standing waves where the circumference is an integral number of wavelengths."
+            },
+            {
+                id: 14,
+                text: "The total energy (E) of an electron in a hydrogen atom is related to its kinetic energy (K) as:",
+                options: ["E = K", "E = -K", "E = 2K", "E = -2K"],
+                correct: 1,
+                topic: "Energy Relations",
+                explanation: "Total energy E is negative and magnitude equals kinetic energy K. Thus E = -K. (Also E = U/2)."
+            },
+            {
+                id: 15,
+                text: "The Franck-Hertz experiment provided direct experimental verification of:",
+                options: ["Wave nature of particles", "Discrete energy levels in atoms", "Photoelectric effect", "Nuclear structure"],
+                correct: 1,
+                topic: "Franck-Hertz Experiment",
+                explanation: "Franck and Hertz experimentally verified the existence of discrete energy levels in atoms (specifically Mercury vapor)."
+            }
+        ];
+
+        const quizApp = {
+            idx: 0, answers: Array(questions.length).fill(null), timer: 900, interval: null,
+
+            start: function() {
+                this.idx = 0; this.answers.fill(null); this.timer = 900;
+                document.getElementById('screen-start').classList.add('hidden');
+                document.getElementById('screen-result').classList.add('hidden');
+                document.getElementById('screen-result').classList.remove('flex');
+                const quizScreen = document.getElementById('screen-quiz');
+                quizScreen.classList.remove('hidden');
+                quizScreen.classList.add('flex');
+                this.renderQ();
+                this.startTimer();
+            },
+
+            startTimer: function() {
+                clearInterval(this.interval);
+                this.interval = setInterval(() => {
+                    if(this.timer <= 0) { this.finish(); return; }
+                    this.timer--;
+                    const m = Math.floor(this.timer / 60);
+                    const s = this.timer % 60;
+                    document.getElementById('timer').innerText = `${m}:${s < 10 ? '0'+s : s}`;
+                }, 1000);
+            },
+
+            renderQ: function() {
+                const q = questions[this.idx];
+                document.getElementById('q-idx').innerText = this.idx + 1;
+                document.getElementById('q-text').innerText = q.text;
+                const box = document.getElementById('options-box');
+                box.innerHTML = '';
+                const nextBtn = document.getElementById('btn-next');
+                nextBtn.disabled = true;
+                nextBtn.innerText = (this.idx === questions.length - 1) ? "Submit Quiz" : "Next Question";
+
+                q.options.forEach((opt, i) => {
+                    const div = document.createElement('div');
+                    div.className = 'quiz-option';
+                    div.innerHTML = `<div class="quiz-circle"></div><span class="text-slate-300 font-medium">${opt}</span>`;
+                    div.onclick = () => this.select(i, div);
+                    box.appendChild(div);
+                });
+            },
+
+            select: function(optIdx, el) {
+                this.answers[this.idx] = optIdx;
+                document.querySelectorAll('.quiz-option').forEach(x => x.classList.remove('selected'));
+                el.classList.add('selected');
+                document.getElementById('btn-next').disabled = false;
+            },
+
+            next: function() {
+                if(this.idx < questions.length - 1) { this.idx++; this.renderQ(); } 
+                else { this.finish(); }
+            },
+
+            finish: function() {
+                clearInterval(this.interval);
+                let correctCount = 0;
+                let topicStats = {};
+
+                questions.forEach((q, i) => {
+                    const isCorrect = (this.answers[i] === q.correct);
+                    if(isCorrect) correctCount++;
+                    if(!topicStats[q.topic]) topicStats[q.topic] = { total: 0, right: 0 };
+                    topicStats[q.topic].total++;
+                    if(isCorrect) topicStats[q.topic].right++;
+                });
+
+                document.getElementById('screen-quiz').classList.add('hidden');
+                document.getElementById('screen-quiz').classList.remove('flex');
+                const resultScreen = document.getElementById('screen-result');
+                resultScreen.classList.remove('hidden');
+                resultScreen.classList.add('flex');
+
+                document.getElementById('score').innerText = correctCount;
+                const pct = Math.round((correctCount / questions.length) * 100);
+                document.getElementById('score-text').innerText = `${pct}% Accuracy`;
+                const deg = (correctCount / questions.length) * 360;
+                document.getElementById('chart-pie').style.background = `conic-gradient(#22c55e 0deg ${deg}deg, #ef4444 ${deg}deg 360deg)`;
+                document.getElementById('pie-text').innerText = `${pct}%`;
+
+                const barBox = document.getElementById('chart-bars');
+                const graphBox = document.getElementById('topic-graph');
+                barBox.innerHTML = '';
+                graphBox.innerHTML = '';
+
+                for (const [topic, data] of Object.entries(topicStats)) {
+                    const topicPct = Math.round((data.right / data.total) * 100);
+                    barBox.innerHTML += `
+                        <div class="text-sm">
+                            <div class="flex justify-between text-slate-400 mb-1">
+                                <span class="font-medium text-white">${topic}</span>
+                                <span>${data.right}/${data.total}</span>
+                            </div>
+                            <div class="bar-bg"><div class="bar-fill" style="width: ${topicPct}%"></div></div>
+                        </div>`;
+                    graphBox.innerHTML += `
+                        <div class="graph-bar-group">
+                            <div class="graph-bar" style="height: ${topicPct}%;">
+                                <div class="graph-value">${topicPct}%</div>
+                            </div>
+                            <div class="graph-label">${topic}</div>
+                        </div>`;
+                }
+
+                finishQuizInternal(); 
+
+                const reviewBox = document.getElementById('review-box');
+                reviewBox.innerHTML = '';
+                questions.forEach((q, i) => {
+                    const isRight = (this.answers[i] === q.correct);
+                    reviewBox.innerHTML += `
+                        <div class="p-4 rounded-xl border border-white/5 bg-[#1e293b] ${isRight ? 'border-l-4 border-l-green-500' : 'border-l-4 border-l-red-500'}">
+                            <p class="font-bold text-white mb-2 text-base">Q${i+1}: ${q.text}</p>
+                            <div class="text-sm mb-2"><span class="${isRight ? 'text-green-400' : 'text-red-400'}">Answer: ${this.answers[i]!==null?q.options[this.answers[i]]:'Skipped'}</span></div>
+                            <div class="text-xs text-slate-400">${q.explanation}</div>
+                        </div>`;
+                });
+            }
+        };
+    </script>
+</body>
+</html>

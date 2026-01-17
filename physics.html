@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Physics | JEE Matrix</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    animation: {
+                        'fade-in-up': 'fadeInUp 0.5s ease-out forwards',
+                        'burn': 'burn 1.5s linear infinite',
+                        'pulse-fire': 'pulseFire 2s infinite ease-in-out',
+                    },
+                    keyframes: {
+                        fadeInUp: {
+                            '0%': { opacity: '0', transform: 'translateY(15px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        },
+                        burn: {
+                            '0%': { backgroundPosition: '0% 50%' },
+                            '100%': { backgroundPosition: '200% 50%' },
+                        },
+                        pulseFire: {
+                            '0%, 100%': { textShadow: '0 0 10px rgba(239, 68, 68, 0.5), 0 0 20px rgba(245, 158, 11, 0.3)' },
+                            '50%': { textShadow: '0 0 20px rgba(239, 68, 68, 0.8), 0 0 30px rgba(245, 158, 11, 0.6)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #020617; 
+            color: #f8fafc;
+            background-image: 
+                radial-gradient(circle at 0% 0%, rgba(139, 92, 246, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 100% 100%, rgba(236, 72, 153, 0.15) 0%, transparent 50%);
+            min-height: 100vh;
+        }
+
+        .bg-grid {
+            background-size: 50px 50px;
+            background-image: linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
+        }
+
+        .chapter-card {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .chapter-card:hover {
+            background: rgba(30, 41, 59, 0.7);
+            border-color: rgba(139, 92, 246, 0.4);
+            transform: translateX(6px);
+            box-shadow: 0 4px 20px rgba(139, 92, 246, 0.1);
+        }
+
+        .chapter-icon {
+            display: flex; align-items: center; justify-content: center;
+            width: 48px; height: 48px; border-radius: 14px;
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+        }
+        .chapter-card:hover .chapter-icon { 
+            transform: scale(1.1) rotate(5deg);
+            background: rgba(139, 92, 246, 0.2);
+            color: #c084fc;
+        }
+
+        .watch-btn {
+            background: linear-gradient(135deg, #7c3aed, #db2777);
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+            text-decoration: none;
+            display: inline-flex;
+        }
+        .watch-btn::before {
+            content: ''; position: absolute; inset: 0;
+            background: linear-gradient(135deg, #db2777, #7c3aed);
+            opacity: 0; transition: opacity 0.3s ease; z-index: -1;
+        }
+        .watch-btn:hover::before { opacity: 1; }
+
+        .burning-bar {
+            background: linear-gradient(90deg, #f59e0b, #ef4444, #fbbf24, #ef4444);
+            background-size: 200% 100%;
+            animation: burn 2s linear infinite;
+            box-shadow: 0 0 10px #ef4444, 0 0 20px #f59e0b;
+        }
+        
+        .burning-text {
+            background: linear-gradient(to bottom, #fcd34d, #f87171);
+            -webkit-background-clip: text;
+            color: transparent;
+            animation: pulse-fire 2s infinite;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen relative selection:bg-fuchsia-500/30">
+
+    <div class="fixed inset-0 bg-grid pointer-events-none z-0"></div>
+
+    <nav class="sticky top-0 z-[60] py-4 px-4 md:px-8 flex justify-between items-center bg-[#020617]/90 backdrop-blur-xl border-b border-white/5 shadow-2xl">
+        <a href="select-subject.html" class="flex items-center gap-2 text-slate-400 hover:text-white transition group cursor-pointer">
+            <div class="p-2 rounded-full bg-slate-800/50 group-hover:bg-slate-700 border border-slate-700 transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+            </div>
+            <span class="text-sm font-semibold tracking-wide">Change Subject</span>
+        </a>
+        
+        <div class="flex items-center gap-3 md:gap-4">
+            <div class="flex flex-col items-end">
+                <span class="text-[9px] md:text-[10px] text-slate-400 uppercase tracking-widest font-bold">Physics Done</span>
+                <span class="text-lg md:text-xl font-black burning-text" id="total-progress-text">0%</span>
+            </div>
+            <div class="w-24 md:w-40 h-2.5 bg-slate-800 rounded-full overflow-hidden border border-slate-700/50 relative shadow-inner">
+                <div id="total-progress-bar" class="burning-bar h-full w-0 rounded-full transition-all duration-1000 ease-out"></div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-4xl mx-auto px-4 py-8 w-full flex-grow relative z-10">
+        
+        <div class="flex items-center gap-5 mb-10 animate-fade-in-up">
+            <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500/10 to-fuchsia-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400 shadow-[0_0_40px_rgba(139,92,246,0.15)]">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+            </div>
+            <div>
+                <h1 class="text-4xl font-bold text-white tracking-tight">Physics</h1>
+                <p class="text-slate-400 text-sm font-medium mt-1">Class 12 • 14 Chapters</p>
+            </div>
+        </div>
+
+        <div class="space-y-4" id="chapter-list">
+
+            <div id="chapter-1" class="chapter-card rounded-2xl p-5 flex flex-col md:flex-row items-center justify-between gap-6 animate-fade-in-up group">
+                <div class="flex items-start gap-5 w-full">
+                    <div class="chapter-icon bg-violet-500/10 text-violet-400 border border-violet-500/10">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    </div>
+                    <div class="w-full">
+                        <h3 class="text-base font-bold text-slate-100 group-hover:text-white transition-colors">Electric Charges and Fields</h3>
+                        <p class="text-xs font-medium text-slate-500 mb-2">Unit I • Electrostatics</p>
+                        <div class="w-full max-w-sm">
+                            <div class="flex justify-between text-[10px] text-slate-500 mb-1.5"><span class="font-medium">Progress</span><span class="font-bold text-violet-400 local-progress-text">0%</span></div>
+                            <div class="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden border border-slate-700/50"><div class="local-progress-bar h-full bg-gradient-to-r from-violet-500 to-fuchsia-500 w-0 rounded-full transition-all duration-1000"></div></div>
+                        </div>
+                    </div>
+                </div>
+                <a href="Electric Charges and Fields.html" class="watch-btn w-full md:w-auto flex-shrink-0 flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-white shadow-lg shadow-violet-500/20 transition-all text-xs font-bold tracking-wide">Watch Lecture</a>
+            </div>
+
+            <div id="chapter-2" class="chapter-card rounded-2xl p-5 flex flex-col md:flex-row items-center justify-between gap-6 animate-fade-in-up group">
+                <div class="flex items-start gap-5 w-full">
+                    <div class="chapter-icon bg-violet-500/10 text-violet-400 border border-violet-500/10">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.2-2.858.571-4.17M5.05 17.075A18.665 18.665 0 0010 21"></path></svg>
+                    </div>
+                    <div class="w-full">
+                        <h3 class="text-base font-bold text-slate-100 group-hover:text-white transition-colors">Electrostatic Potential and Capacitance</h3>
+                        <p class="text-xs font-medium text-slate-500 mb-2">Unit II • Electrostatics</p>
+                        <div class="w-full max-w-sm">
+                            <div class="flex justify-between text-[10px] text-slate-500 mb-1.5"><span class="font-medium">Progress</span><span class="font-bold text-violet-400 local-progress-text">0%</span></div>
+                            <div class="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden border border-slate-700/50"><div class="local-progress-bar h-full bg-gradient-to-r from-violet-500 to-fuchsia-500 w-0 rounded-full transition-all duration-1000"></div></div>
+                        </div>
+                    </div>
+                </div>
+                <a href="Electrostatic Potential.html" class="watch-btn w-full md:w-auto flex-shrink-0 flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-white shadow-lg shadow-violet-500/20 transition-all text-xs font-bold tracking-wide">Watch Lecture</a>
+            </div>
+
+            <div id="chapter-3" class="chapter-card rounded-2xl p-5 flex flex-col md:flex-row items-center justify-between gap-6 animate-fade-in-up group">
+                <div class="flex items-start gap-5 w-full">
+                    <div class="chapter-icon bg-indigo-500/10 text-indigo-400 border border-indigo-500/10">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </div>
+                    <div class="w-full">
+                        <h3 class="text-base font-bold text-slate-100 group-hover:text-white transition-colors">Current Electricity</h3>
+                        <p class="text-xs font-medium text-slate-500 mb-2">Unit II • Current Electricity</p>
+                        <div class="w-full max-w-sm">
+                            <div class="flex justify-between text-[10px] text-slate-500 mb-1.5"><span class="font-medium">Progress</span><span class="font-bold text-violet-400 local-progress-text">0%</span></div>
+                            <div class="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden border border-slate-700/50"><div class="local-progress-bar h-full bg-gradient-to-r from-violet-500 to-fuchsia-500 w-0 rounded-full transition-all duration-1000"></div></div>
+                        </div>
+                    </div>
+                </div>
+                <a href="Current Electricity.html" class="watch-btn w-full md:w-auto flex-shrink-0 flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-white shadow-lg shadow-violet-500/20 transition-all text-xs font-bold tracking-wide">Watch Lecture</a>
+            </div>
+
+            <div id="chapter-4" class="chapter-card rounded-2xl p-5 flex flex-col md:flex-row items-center justify-between gap-6 animate-fade-in-up group">
+                <div class="flex items-start gap-5 w-full">
+                    <div class="chapter-icon bg-cyan-500/10 text-cyan-400 border border-cyan-500/10">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                    </div>
+                    <div class="w-full">
+                        <h3 class="text-base font-bold text-slate-100 group-hover:text-white transition-colors">Moving Charges and Magnetism</h3>
+                        <p class="text-xs font-medium text-slate-500 mb-2">Unit III • Magnetism</p>
+                        <div class="w-full max-w-sm">
+                            <div class="flex justify-between text-[10px] text-slate-500 mb-1.5"><span class="font-medium">Progress</span><span class="font-bold text-violet-400 local-progress-text">0%</span></div>
+                            <div class="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden border border-slate-700/50"><div class="local-progress-bar h-full bg-gradient-to-r from-violet-500 to-fuchsia-500 w-0 rounded-full transition-all duration-1000"></div></div>
+                        </div>
+                    </div>
+                </div>
+                <a href="Moving Charges.html" class="watch-btn w-full md:w-auto flex-shrink-0 flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-white shadow-lg shadow-violet-500/20 transition-all text-xs font-bold tracking-wide">Watch Lecture</a>
+            </div>
+
+            <div id="chapter-5" class="chapter-card rounded-2xl p-5 flex flex-col md:flex-row items-center justify-between gap-6 animate-fade-in-up group">
+                <div class="flex items-start gap-5 w-full">
+                    <div class="chapter-icon bg-cyan-500/10 text-cyan-400 border border-cyan-500/10">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                    </div>
+                    <div class="w-full">
+                        <h3 class="text-base font-bold text-slate-100 group-hover:text-white transition-colors">Magnetism and Matter</h3>
+                        <p class="text-xs font-medium text-slate-500 mb-2">Unit III • Magnetism</p>
+                        <div class="w-full max-w-sm">
+                            <div class="flex justify-between text-[10px] text-slate-500 mb-1.5"><span class="font-medium">Progress</span><span class="font-bold text-violet-400 local-progress-text">0%</span></div>
+                            <div class="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden border border-slate-700/50"><div class="local-progress-bar h-full bg-gradient-to-r from-violet-500 to-fuchsia-500 w-0 rounded-full transition-all duration-1000"></div></div>
+                        </div>
+                    </div>
+                </div>
+                <a href="Magnetism and Matter.html" class="watch-btn w-full md:w-auto flex-shrink-0 flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-white shadow-lg shadow-violet-500/20 transition-all text-xs font-bold tracking-wide">Watch Lecture</a>
+            </div>
+
+            <div id="chapter-6" class="chapter-card rounded-2xl p-5 flex flex-col md:flex-row items-center justify-between gap-6 animate-fade-in-up group">
+                <div class="flex items-start gap-5 w-full">
+                    <div class="chapter-icon bg-teal-500/10 text-teal-400 border border-teal-500/10">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </div>
+                    <div class="w-full">
+                        <h3 class="text-base font-bold text-slate-100 group-hover:text-white transition-colors">Electromagnetic Induction</h3>
+                        <p class="text-xs font-medium text-slate-500 mb-2">Unit IV • EMI & AC</p>
+                        <div class="w-full max-w-sm">
+                            <div class="flex justify-between text-[10px] text-slate-500 mb-1.5"><span class="font-medium">Progress</span><span class="font-bold text-violet-400 local-progress-text">0%</span></div>
+                            <div class="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden border border-slate-700/50"><div class="local-progress-bar h-full bg-gradient-to-r from-violet-500 to-fuchsia-500 w-0 rounded-full transition-all duration-1000"></div></div>
+                        </div>
+                    </div>
+                </div>
+                <a href="EMI.html" class="watch-btn w-full md:w-auto flex-shrink-0 flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-white shadow-lg shadow-violet-500/20 transition-all text-xs font-bold tracking-wide">Watch Lecture</a>
+            </div>
+
+            <div id="chapter-7" class="chapter-card rounded-2xl p-5 flex flex-col md:flex-row items-center justify-between gap-6 animate-fade-in-up group">
+                <div class="flex items-start gap-5 w-full">
+                    <div class="chapter-icon bg-teal-500/10 text-teal-400 border border-teal-500/10">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    </div>
+                    <div class="w-full">
+                        <h3 class="text-base font-bold text-slate-100 group-hover:text-white transition-colors">Alternating Current</h3>
+                        <p class="text-xs font-medium text-slate-500 mb-2">Unit IV • EMI & AC</p>
+                        <div class="w-full max-w-sm">
+                            <div class="flex justify-between text-[10px] text-slate-500 mb-1.5"><span class="font-medium">Progress</span><span class="font-bold text-violet-400 local-progress-text">0%</span></div>
+                            <div class="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden border border-slate-700/50"><div class="local-progress-bar h-full bg-gradient-to-r from-violet-500 to-fuchsia-500 w-0 rounded-full transition-all duration-1000"></div></div>
+                        </div>
+                    </div>
+                </div>
+                <a href="AC.html" class="watch-btn w-full md:w-auto flex-shrink-0 flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-white shadow-lg shadow-violet-500/20 transition-all text-xs font-bold tracking-wide">Watch Lecture</a>
+            </div>
+
+            <div id="chapter-8" class="chapter-card rounded-2xl p-5 flex flex-col md:flex-row items-center justify-between gap-6 animate-fade-in-up group">
+                <div class="flex items-start gap-5 w-full">
+                    <div class="chapter-icon bg-sky-500/10 text-sky-400 border border-sky-500/10">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"></path></svg>
+                    </div>
+                    <div class="w-full">
+                        <h3 class="text-base font-bold text-slate-100 group-hover:text-white transition-colors">Electromagnetic Waves</h3>
+                        <p class="text-xs font-medium text-slate-500 mb-2">Unit V • EM Waves</p>
+                        <div class="w-full max-w-sm">
+                            <div class="flex justify-between text-[10px] text-slate-500 mb-1.5"><span class="font-medium">Progress</span><span class="font-bold text-violet-400 local-progress-text">0%</span></div>
+                            <div class="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden border border-slate-700/50"><div class="local-progress-bar h-full bg-gradient-to-r from-violet-500 to-fuchsia-500 w-0 rounded-full transition-all duration-1000"></div></div>
+                        </div>
+                    </div>
+                </div>
+                <a href="EMWaves.html" class="watch-btn w-full md:w-auto flex-shrink-0 flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-white shadow-lg shadow-violet-500/20 transition-all text-xs font-bold tracking-wide">Watch Lecture</a>
+            </div>
+
+            <div id="chapter-9" class="chapter-card rounded-2xl p-5 flex flex-col md:flex-row items-center justify-between gap-6 animate-fade-in-up group">
+                <div class="flex items-start gap-5 w-full">
+                    <div class="chapter-icon bg-purple-500/10 text-purple-400 border border-purple-500/10">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                    </div>
+                    <div class="w-full">
+                        <h3 class="text-base font-bold text-slate-100 group-hover:text-white transition-colors">Ray Optics and Optical Instruments</h3>
+                        <p class="text-xs font-medium text-slate-500 mb-2">Unit VI • Optics</p>
+                        <div class="w-full max-w-sm">
+                            <div class="flex justify-between text-[10px] text-slate-500 mb-1.5"><span class="font-medium">Progress</span><span class="font-bold text-violet-400 local-progress-text">0%</span></div>
+                            <div class="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden border border-slate-700/50"><div class="local-progress-bar h-full bg-gradient-to-r from-violet-500 to-fuchsia-500 w-0 rounded-full transition-all duration-1000"></div></div>
+                        </div>
+                    </div>
+                </div>
+                <a href="ROptics.html" class="watch-btn w-full md:w-auto flex-shrink-0 flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-white shadow-lg shadow-violet-500/20 transition-all text-xs font-bold tracking-wide">Watch Lecture</a>
+            </div>
+
+            <div id="chapter-10" class="chapter-card rounded-2xl p-5 flex flex-col md:flex-row items-center justify-between gap-6 animate-fade-in-up group">
+                <div class="flex items-start gap-5 w-full">
+                    <div class="chapter-icon bg-purple-500/10 text-purple-400 border border-purple-500/10">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"></path></svg>
+                    </div>
+                    <div class="w-full">
+                        <h3 class="text-base font-bold text-slate-100 group-hover:text-white transition-colors">Wave Optics</h3>
+                        <p class="text-xs font-medium text-slate-500 mb-2">Unit VI • Optics</p>
+                        <div class="w-full max-w-sm">
+                            <div class="flex justify-between text-[10px] text-slate-500 mb-1.5"><span class="font-medium">Progress</span><span class="font-bold text-violet-400 local-progress-text">0%</span></div>
+                            <div class="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden border border-slate-700/50"><div class="local-progress-bar h-full bg-gradient-to-r from-violet-500 to-fuchsia-500 w-0 rounded-full transition-all duration-1000"></div></div>
+                        </div>
+                    </div>
+                </div>
+                <a href="WOptics.html" class="watch-btn w-full md:w-auto flex-shrink-0 flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-white shadow-lg shadow-violet-500/20 transition-all text-xs font-bold tracking-wide">Watch Lecture</a>
+            </div>
+
+            <div id="chapter-11" class="chapter-card rounded-2xl p-5 flex flex-col md:flex-row items-center justify-between gap-6 animate-fade-in-up group">
+                <div class="flex items-start gap-5 w-full">
+                    <div class="chapter-icon bg-pink-500/10 text-pink-400 border border-pink-500/10">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                    </div>
+                    <div class="w-full">
+                        <h3 class="text-base font-bold text-slate-100 group-hover:text-white transition-colors">Dual Nature of Radiation and Matter</h3>
+                        <p class="text-xs font-medium text-slate-500 mb-2">Unit VII • Modern Physics</p>
+                        <div class="w-full max-w-sm">
+                            <div class="flex justify-between text-[10px] text-slate-500 mb-1.5"><span class="font-medium">Progress</span><span class="font-bold text-violet-400 local-progress-text">0%</span></div>
+                            <div class="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden border border-slate-700/50"><div class="local-progress-bar h-full bg-gradient-to-r from-violet-500 to-fuchsia-500 w-0 rounded-full transition-all duration-1000"></div></div>
+                        </div>
+                    </div>
+                </div>
+                <a href="DNature.html" class="watch-btn w-full md:w-auto flex-shrink-0 flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-white shadow-lg shadow-violet-500/20 transition-all text-xs font-bold tracking-wide">Watch Lecture</a>
+            </div>
+
+            <div id="chapter-12" class="chapter-card rounded-2xl p-5 flex flex-col md:flex-row items-center justify-between gap-6 animate-fade-in-up group">
+                <div class="flex items-start gap-5 w-full">
+                    <div class="chapter-icon bg-rose-500/10 text-rose-400 border border-rose-500/10">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path></svg>
+                    </div>
+                    <div class="w-full">
+                        <h3 class="text-base font-bold text-slate-100 group-hover:text-white transition-colors">Atoms</h3>
+                        <p class="text-xs font-medium text-slate-500 mb-2">Unit VIII • Modern Physics</p>
+                        <div class="w-full max-w-sm">
+                            <div class="flex justify-between text-[10px] text-slate-500 mb-1.5"><span class="font-medium">Progress</span><span class="font-bold text-violet-400 local-progress-text">0%</span></div>
+                            <div class="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden border border-slate-700/50"><div class="local-progress-bar h-full bg-gradient-to-r from-violet-500 to-fuchsia-500 w-0 rounded-full transition-all duration-1000"></div></div>
+                        </div>
+                    </div>
+                </div>
+                <a href="Atoms.html" class="watch-btn w-full md:w-auto flex-shrink-0 flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-white shadow-lg shadow-violet-500/20 transition-all text-xs font-bold tracking-wide">Watch Lecture</a>
+            </div>
+
+            <div id="chapter-13" class="chapter-card rounded-2xl p-5 flex flex-col md:flex-row items-center justify-between gap-6 animate-fade-in-up group">
+                <div class="flex items-start gap-5 w-full">
+                    <div class="chapter-icon bg-orange-500/10 text-orange-400 border border-orange-500/10">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                    </div>
+                    <div class="w-full">
+                        <h3 class="text-base font-bold text-slate-100 group-hover:text-white transition-colors">Nuclei</h3>
+                        <p class="text-xs font-medium text-slate-500 mb-2">Unit VIII • Modern Physics</p>
+                        <div class="w-full max-w-sm">
+                            <div class="flex justify-between text-[10px] text-slate-500 mb-1.5"><span class="font-medium">Progress</span><span class="font-bold text-violet-400 local-progress-text">0%</span></div>
+                            <div class="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden border border-slate-700/50"><div class="local-progress-bar h-full bg-gradient-to-r from-violet-500 to-fuchsia-500 w-0 rounded-full transition-all duration-1000"></div></div>
+                        </div>
+                    </div>
+                </div>
+                <a href="Nuclei.html" class="watch-btn w-full md:w-auto flex-shrink-0 flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-white shadow-lg shadow-violet-500/20 transition-all text-xs font-bold tracking-wide">Watch Lecture</a>
+            </div>
+
+            <div id="chapter-14" class="chapter-card rounded-2xl p-5 flex flex-col md:flex-row items-center justify-between gap-6 animate-fade-in-up group">
+                <div class="flex items-start gap-5 w-full">
+                    <div class="chapter-icon bg-yellow-500/10 text-yellow-400 border border-yellow-500/10">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                    </div>
+                    <div class="w-full">
+                        <h3 class="text-base font-bold text-slate-100 group-hover:text-white transition-colors">Semiconductor Electronics</h3>
+                        <p class="text-xs font-medium text-slate-500 mb-2">Unit IX • Electronic Devices</p>
+                        <div class="w-full max-w-sm">
+                            <div class="flex justify-between text-[10px] text-slate-500 mb-1.5"><span class="font-medium">Progress</span><span class="font-bold text-violet-400 local-progress-text">0%</span></div>
+                            <div class="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden border border-slate-700/50"><div class="local-progress-bar h-full bg-gradient-to-r from-violet-500 to-fuchsia-500 w-0 rounded-full transition-all duration-1000"></div></div>
+                        </div>
+                    </div>
+                </div>
+                <a href="Semicond.html" class="watch-btn w-full md:w-auto flex-shrink-0 flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-white shadow-lg shadow-violet-500/20 transition-all text-xs font-bold tracking-wide">Watch Lecture</a>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            loadProgress();
+        });
+
+        function loadProgress() {
+            const totalChapters = 14; 
+            let completedChapters = 0;
+
+            for (let i = 1; i <= totalChapters; i++) {
+                const chapterId = `chapter-${i}`;
+                const storageKey = `physics_chapter_${i}_progress`; 
+                
+                const savedProgress = parseInt(localStorage.getItem(storageKey)) || 0;
+                
+                const card = document.getElementById(chapterId);
+                
+                if (card) {
+                    const localBar = card.querySelector('.local-progress-bar');
+                    const localText = card.querySelector('.local-progress-text');
+                    
+                    if(localBar) localBar.style.width = `${savedProgress}%`;
+                    if(localText) localText.textContent = `${savedProgress}%`;
+                    
+                    completedChapters += savedProgress;
+                }
+            }
+
+            const totalAverage = Math.round(completedChapters / totalChapters);
+
+            const totalBar = document.getElementById('total-progress-bar');
+            const totalText = document.getElementById('total-progress-text');
+
+            if(totalBar) totalBar.style.width = `${totalAverage}%`;
+            if(totalText) totalText.textContent = `${totalAverage}%`;
+        }
+    </script>
+</body>
+</html>

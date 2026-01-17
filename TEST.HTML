@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Physics Ch.14: Semiconductor Electronics</title>
+    <style>
+        :root {
+            /* Deep Dark Theme Palette */
+            --bg-color: #050505;
+            --card-bg: #121212;
+            --text-primary: #e0e0e0;
+            --text-secondary: #a0a0a0;
+            --accent: #14b8a6;       /* Teal for Electronics/Chips */
+            --accent-hover: #0d9488;
+            --border: #2a2a2a;
+            --option-bg: #1e1e1e;
+            --option-hover: #2d2d2d;
+            --option-selected: #134e4a; /* Dark Teal tint */
+            
+            --success: #22c55e;      /* Green */
+            --danger: #ef4444;       /* Red */
+        }
+
+        * { box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 15px;
+        }
+
+        /* Main Container */
+        .app-container {
+            width: 100%;
+            max-width: 750px;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            min-height: 600px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+            position: relative;
+        }
+
+        /* Header */
+        .header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #181818;
+        }
+
+        .header h2 { margin: 0; font-size: 1.1rem; color: var(--accent); letter-spacing: 1px; }
+
+        .timer {
+            background: #222;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 1.2rem;
+            border: 1px solid #333;
+            color: #fff;
+        }
+
+        /* Screens */
+        .screen {
+            padding: 30px;
+            display: none;
+            flex-direction: column;
+            flex: 1;
+            animation: fadeIn 0.4s ease;
+        }
+        
+        .screen.active { display: flex; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Buttons */
+        .btn {
+            background: var(--accent);
+            color: #000;
+            border: none;
+            padding: 16px;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: auto;
+            width: 100%;
+            transition: all 0.2s;
+        }
+        .btn:hover { background: var(--accent-hover); transform: translateY(-1px); }
+        .btn:active { transform: translateY(0); }
+        
+        /* Disabled Button State */
+        .btn:disabled {
+            background: #333;
+            color: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Option Cards */
+        .option-item {
+            background: var(--option-bg);
+            border: 1px solid var(--border);
+            padding: 18px 20px;
+            margin-bottom: 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            transition: background 0.2s;
+        }
+        .option-item:hover { background: var(--option-hover); border-color: #444; }
+        
+        .option-item.selected { 
+            background: var(--option-selected); 
+            border-color: var(--accent); 
+        }
+
+        .circle {
+            width: 20px; height: 20px;
+            border: 2px solid #555;
+            border-radius: 50%;
+            margin-right: 15px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .option-item.selected .circle {
+            border-color: var(--accent);
+        }
+        .option-item.selected .circle::after {
+            content: ''; width: 10px; height: 10px;
+            background: var(--accent); border-radius: 50%;
+        }
+
+        /* Results & Charts */
+        .result-header {
+            text-align: center;
+            background: #181818;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            border: 1px solid var(--border);
+        }
+
+        .chart-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .chart-box {
+            background: #181818;
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* CSS Pie Chart */
+        .pie-chart {
+            width: 120px; height: 120px; border-radius: 50%;
+            margin: 15px 0;
+            background: conic-gradient(var(--success) 0deg, var(--danger) 0deg);
+            position: relative;
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+        }
+        .pie-inner {
+            position: absolute; top: 15px; left: 15px;
+            width: 90px; height: 90px;
+            background: #181818; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; color: var(--text-primary);
+        }
+
+        /* CSS Bar Chart */
+        .bar-wrapper { width: 100%; display: flex; flex-direction: column; gap: 10px; }
+        .bar-row { font-size: 0.85rem; }
+        .bar-label { display: flex; justify-content: space-between; margin-bottom: 5px; color: var(--text-secondary); }
+        .bar-bg { height: 6px; background: #333; border-radius: 3px; overflow: hidden; }
+        .bar-fill { height: 100%; background: var(--accent); transition: width 1s ease; }
+
+        /* Review List */
+        .review-item {
+            background: #181818;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-left: 4px solid #333;
+            border-radius: 4px;
+        }
+        .review-item.correct { border-left-color: var(--success); }
+        .review-item.wrong { border-left-color: var(--danger); }
+        
+        .explanation {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px dashed #333;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        /* Progress Bar */
+        .progress-bar { height: 4px; background: #222; width: 100%; position: absolute; top: 0; left: 0; }
+        .progress-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.3s; }
+
+        @media (max-width: 600px) {
+            .chart-grid { grid-template-columns: 1fr; }
+            .screen { padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+    
+    <div class="header">
+        <h2>Physics Quiz</h2>
+        <div class="timer" id="timer">15:00</div>
+    </div>
+
+    <div id="screen-start" class="screen active">
+        <div style="text-align: center; margin-top: 40px;">
+            <h1 style="font-size: 2rem; margin-bottom: 10px;">Semiconductor Electronics</h1>
+            <p style="color: var(--text-secondary);">Chapter 14 • Board Level Master Quiz</p>
+        </div>
+
+        <div style="background: #1a1a1a; padding: 25px; border-radius: 12px; margin: 30px 0; line-height: 1.8; border: 1px solid var(--border);">
+            <p>✅ <strong>15 Questions</strong> covering Diodes, Logic Gates, & Transistors.</p>
+            <p>⏱️ <strong>15 Minutes</strong> time limit.</p>
+            <p>🔒 <strong>Locked Navigation:</strong> You must select an answer to move next.</p>
+            <p>📊 <strong>Smart Analysis:</strong> Detailed review at the end.</p>
+        </div>
+
+        <button class="btn" onclick="app.start()">Start Quiz</button>
+    </div>
+
+    <div id="screen-quiz" class="screen">
+        <div style="margin-bottom: 20px;">
+            <div style="color: var(--accent); font-weight: bold; font-size: 0.9rem; letter-spacing: 1px; margin-bottom: 10px;">QUESTION <span id="q-idx">1</span>/15</div>
+            <div id="q-text" style="font-size: 1.3rem; line-height: 1.4; font-weight: 500;">Loading...</div>
+        </div>
+        
+        <div id="options-box">
+            </div>
+
+        <button class="btn" id="btn-next" onclick="app.next()" disabled>Next Question</button>
+    </div>
+
+    <div id="screen-result" class="screen">
+        <div class="result-header">
+            <div style="color: var(--text-secondary); margin-bottom: 5px;">Your Final Score</div>
+            <div style="font-size: 3.5rem; font-weight: 800; color: var(--accent); line-height: 1;">
+                <span id="score">0</span><span style="font-size: 1.5rem; color: #555;">/15</span>
+            </div>
+            <div id="score-text" style="color: var(--success); font-weight: bold; margin-top: 10px;">0% Accuracy</div>
+        </div>
+
+        <div class="chart-grid">
+            <div class="chart-box">
+                <div style="color: var(--text-secondary); margin-bottom: 10px; font-weight: bold;">Accuracy</div>
+                <div class="pie-chart" id="chart-pie">
+                    <div class="pie-inner" id="pie-text">0%</div>
+                </div>
+                <div style="font-size: 0.8rem; color: #888; margin-top: 5px;">
+                    <span style="color: var(--success)">●</span> Correct &nbsp; 
+                    <span style="color: var(--danger)">●</span> Wrong
+                </div>
+            </div>
+            <div class="chart-box" style="justify-content: flex-start; width: 100%;">
+                <div style="color: var(--text-secondary); margin-bottom: 15px; font-weight: bold;">Topic Strength</div>
+                <div class="bar-wrapper" id="chart-bars">
+                    </div>
+            </div>
+        </div>
+
+        <h3 style="border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 20px;">Detailed Review</h3>
+        <div id="review-box"></div>
+        
+        <button class="btn" onclick="location.reload()" style="margin-top: 20px;">Retake Quiz</button>
+    </div>
+</div>
+
+<script>
+// --- QUESTION DATA (Chapter 14: Semiconductors) ---
+const questions = [
+    {
+        id: 1,
+        text: "At absolute zero temperature (0 K), an intrinsic semiconductor behaves as a/an:",
+        options: ["Superconductor", "Insulator", "Conductor", "Semiconductor with high conductivity"],
+        correct: 1,
+        topic: "Energy Bands",
+        [cite_start]explanation: "At 0 K, the valence band is completely filled and the conduction band is completely empty, making it a perfect insulator. [cite: 6127-6129]"
+    },
+    {
+        id: 2,
+        text: "In an n-type semiconductor, the majority charge carriers are:",
+        options: ["Holes", "Electrons", "Positive Ions", "Neutrons"],
+        correct: 1,
+        topic: "Doping",
+        [cite_start]explanation: "n-type semiconductors are doped with pentavalent impurities, providing excess free electrons as majority carriers. [cite: 6428-6429]"
+    },
+    {
+        id: 3,
+        text: "The depletion layer in a p-n junction diode consists of:",
+        options: ["Electrons only", "Holes only", "Immobile ions", "Mobile charge carriers"],
+        correct: 2,
+        topic: "p-n Junction",
+        [cite_start]explanation: "The depletion region is devoid of mobile charge carriers and consists of immobile ionised donors and acceptors. [cite: 6525-6526]"
+    },
+    {
+        id: 4,
+        text: "When a p-n junction is forward biased, the width of the depletion layer:",
+        options: ["Increases", "Decreases", "Remains same", "Becomes infinite"],
+        correct: 1,
+        topic: "Biasing",
+        [cite_start]explanation: "In forward bias, the applied voltage opposes the barrier potential, pushing carriers towards the junction and reducing depletion width. [cite: 6617-6618]"
+    },
+    {
+        id: 5,
+        text: "A Zener diode is primarily used as a:",
+        options: ["Rectifier", "Amplifier", "Voltage Regulator", "Oscillator"],
+        correct: 2,
+        topic: "Zener Diode",
+        [cite_start]explanation: "Zener diodes are designed to operate in the reverse breakdown region to maintain a constant voltage, acting as voltage regulators. [cite: 6851-6852]"
+    },
+    {
+        id: 6,
+        text: "In a full-wave rectifier, if the input frequency is 50 Hz, the output frequency of the ripple is:",
+        options: ["50 Hz", "100 Hz", "25 Hz", "Zero"],
+        correct: 1,
+        topic: "Rectifier",
+        [cite_start]explanation: "A full-wave rectifier converts both halves of the AC cycle, so the output pulses occur at twice the input frequency (2ν). [cite: 7349-7350]"
+    },
+    {
+        id: 7,
+        text: "Which logic gate yields a 'High' (1) output only if ALL its inputs are 'High' (1)?",
+        options: ["OR", "AND", "NOT", "NOR"],
+        correct: 1,
+        topic: "Logic Gates",
+        [cite_start]explanation: "The AND gate gives an output of 1 only when both inputs A and B are 1. [cite: 7144-7145]"
+    },
+    {
+        id: 8,
+        text: "The energy band gap (Eg) for Silicon at room temperature is approximately:",
+        options: ["0.7 eV", "1.1 eV", "5.4 eV", "3.0 eV"],
+        correct: 1,
+        topic: "Energy Bands",
+        [cite_start]explanation: "The energy band gap for Silicon is approximately 1.1 eV, while for Germanium it is ~0.7 eV. [cite: 7291-7292]"
+    },
+    {
+        id: 9,
+        text: "To obtain a p-type semiconductor, Silicon should be doped with a valency:",
+        options: ["+5", "+4", "+3", "+2"],
+        correct: 2,
+        topic: "Doping",
+        [cite_start]explanation: "Trivalent impurities (valency 3 like Boron, Aluminum) create holes, resulting in a p-type semiconductor. [cite: 6432-6433]"
+    },
+    {
+        id: 10,
+        text: "Which of the following is a 'Universal Gate'?",
+        options: ["AND", "OR", "NOT", "NAND"],
+        correct: 3,
+        topic: "Logic Gates",
+        [cite_start]explanation: "NAND and NOR gates are called Universal Gates because any other logic gate can be realized using them alone. [cite: 7194-7195]"
+    },
+    {
+        id: 11,
+        text: "In a photodiode, the value of photocurrent is proportional to:",
+        options: ["Voltage applied", "Intensity of incident light", "Temperature", "Resistance"],
+        correct: 1,
+        topic: "Photodiode",
+        [cite_start]explanation: "The magnitude of photocurrent depends on the number of electron-hole pairs generated, which is proportional to light intensity. [cite: 6911-6912]"
+    },
+    {
+        id: 12,
+        text: "An LED is typically biased in:",
+        options: ["Forward Bias", "Reverse Bias", "No Bias", "Breakdown Region"],
+        correct: 0,
+        topic: "LED",
+        [cite_start]explanation: "Light Emitting Diodes (LEDs) emit light via spontaneous radiation when forward biased. [cite: 6955-6957]"
+    },
+    {
+        id: 13,
+        text: "The Boolean expression Y = A + B represents which gate?",
+        options: ["AND", "OR", "NAND", "NOR"],
+        correct: 1,
+        topic: "Logic Gates",
+        [cite_start]explanation: "The expression A + B corresponds to the logical OR operation. [cite: 7093-7095]"
+    },
+    {
+        id: 14,
+        text: "In a semiconductor, the relation between electron concentration (ne), hole concentration (nh) and intrinsic concentration (ni) is:",
+        options: ["ne + nh = ni", "ne - nh = ni", "ne * nh = ni²", "ne / nh = ni"],
+        correct: 2,
+        topic: "Mass Action Law",
+        [cite_start]explanation: "The mass action law states that at thermal equilibrium, ne * nh = ni². [cite: 6464-6465]"
+    },
+    {
+        id: 15,
+        text: "Carbon, Silicon, and Germanium have the same lattice structure. Why is Carbon an insulator?",
+        options: ["Its energy gap is very small", "Its energy gap is very large (~5.4 eV)", "It has no valence electrons", "It is black in color"],
+        correct: 1,
+        topic: "Material Properties",
+        [cite_start]explanation: "Carbon (Diamond) has a large energy band gap (~5.4 eV), making it an insulator, unlike Si and Ge which have smaller gaps. [cite: 6468-6469]"
+    }
+];
+
+// --- APP LOGIC ---
+const app = {
+    idx: 0,
+    score: 0,
+    answers: Array(questions.length).fill(null), // Stores selected index
+    timer: 15 * 60, // 15 minutes
+    interval: null,
+
+    start: function() {
+        document.getElementById('screen-start').classList.remove('active');
+        document.getElementById('screen-quiz').classList.add('active');
+        this.renderQ();
+        this.startTimer();
+    },
+
+    startTimer: function() {
+        this.interval = setInterval(() => {
+            if(this.timer <= 0) { 
+                this.finish(); 
+                return; 
+            }
+            this.timer--;
+            const m = Math.floor(this.timer / 60);
+            const s = this.timer % 60;
+            const timerEl = document.getElementById('timer');
+            timerEl.innerText = `${m}:${s < 10 ? '0'+s : s}`;
+            
+            // Warning color
+            if(this.timer < 60) {
+                timerEl.style.color = 'var(--danger)';
+                timerEl.style.borderColor = 'var(--danger)';
+            }
+        }, 1000);
+    },
+
+    renderQ: function() {
+        const q = questions[this.idx];
+        document.getElementById('q-idx').innerText = this.idx + 1;
+        document.getElementById('q-text').innerText = q.text;
+        
+        // Progress Bar
+        const percent = ((this.idx) / questions.length) * 100;
+        document.getElementById('progress').style.width = `${percent}%`;
+
+        // Render Options
+        const box = document.getElementById('options-box');
+        box.innerHTML = '';
+        
+        // Lock Next Button initially
+        const nextBtn = document.getElementById('btn-next');
+        nextBtn.disabled = true;
+        nextBtn.innerText = (this.idx === questions.length - 1) ? "Submit Quiz" : "Next Question";
+        nextBtn.style.background = (this.idx === questions.length - 1) ? "var(--success)" : "var(--accent)";
+
+        q.options.forEach((opt, i) => {
+            const div = document.createElement('div');
+            div.className = 'option-item';
+            div.innerHTML = `<div class="circle"></div>${opt}`;
+            div.onclick = () => this.select(i, div);
+            box.appendChild(div);
+        });
+    },
+
+    select: function(optIdx, el) {
+        this.answers[this.idx] = optIdx;
+        
+        // Visual Selection
+        const all = document.querySelectorAll('.option-item');
+        all.forEach(x => x.classList.remove('selected'));
+        el.classList.add('selected');
+        
+        // Unlock Next
+        document.getElementById('btn-next').disabled = false;
+    },
+
+    next: function() {
+        if(this.idx < questions.length - 1) {
+            this.idx++;
+            this.renderQ();
+        } else {
+            this.finish();
+        }
+    },
+
+    finish: function() {
+        clearInterval(this.interval);
+        document.getElementById('progress').style.width = '100%';
+        
+        // Calculate Score & Topics
+        let correctCount = 0;
+        let topicStats = {};
+
+        questions.forEach((q, i) => {
+            const user = this.answers[i];
+            const isRight = (user === q.correct);
+            
+            // Topic Stats
+            if (!topicStats[q.topic]) topicStats[q.topic] = { tot: 0, right: 0 };
+            topicStats[q.topic].tot++;
+            
+            if (isRight) {
+                correctCount++;
+                topicStats[q.topic].right++;
+            }
+        });
+
+        // Switch Screens
+        document.getElementById('screen-quiz').classList.remove('active');
+        document.getElementById('screen-result').classList.add('active');
+
+        // Render Results
+        this.renderStats(correctCount, topicStats);
+        this.renderReview();
+    },
+
+    renderStats: function(correct, topicStats) {
+        // Score
+        document.getElementById('score').innerText = correct;
+        const pct = Math.round((correct / questions.length) * 100);
+        document.getElementById('score-text').innerText = `${pct}% Accuracy`;
+        
+        // Pie Chart (CSS Gradient)
+        const deg = (correct / questions.length) * 360;
+        document.getElementById('chart-pie').style.background = 
+            `conic-gradient(var(--success) 0deg ${deg}deg, var(--danger) ${deg}deg 360deg)`;
+        document.getElementById('pie-text').innerText = `${pct}%`;
+
+        // Topic Bars
+        const barBox = document.getElementById('chart-bars');
+        barBox.innerHTML = '';
+        for (const [topic, data] of Object.entries(topicStats)) {
+            const w = Math.round((data.right / data.tot) * 100);
+            barBox.innerHTML += `
+                <div class="bar-row">
+                    <div class="bar-label">
+                        <span>${topic}</span>
+                        <span>${data.right}/${data.tot}</span>
+                    </div>
+                    <div class="bar-bg">
+                        <div class="bar-fill" style="width: ${w}%"></div>
+                    </div>
+                </div>`;
+        }
+    },
+
+    renderReview: function() {
+        const box = document.getElementById('review-box');
+        box.innerHTML = '';
+        
+        questions.forEach((q, i) => {
+            const user = this.answers[i];
+            const isRight = (user === q.correct);
+            const userTxt = user !== null ? q.options[user] : "Skipped";
+            const correctTxt = q.options[q.correct];
+
+            box.innerHTML += `
+                <div class="review-item ${isRight ? 'correct' : 'wrong'}">
+                    <div style="font-weight: bold; margin-bottom: 8px;">Q${i+1}: ${q.text}</div>
+                    <div style="font-size: 0.9rem;">
+                        <span style="color: ${isRight ? 'var(--success)' : 'var(--danger)'}">Your Answer: ${userTxt}</span><br>
+                        <span style="color: var(--success)">Correct Answer: ${correctTxt}</span>
+                    </div>
+                    <div class="explanation">
+                        <strong>Reason:</strong> ${q.explanation}
+                    </div>
+                </div>`;
+        });
+    }
+};
+</script>
+
+</body>
+</html>

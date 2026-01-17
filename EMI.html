@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lecture Player | JEE Matrix</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=Merriweather:ital,wght@0,300;0,400;0,700;1,400&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { 
+                        sans: ['Inter', 'sans-serif'],
+                        serif: ['Merriweather', 'serif'],
+                    },
+                    colors: { background: '#020617' },
+                    animation: { 'fade-in': 'fadeIn 0.5s ease-out forwards' },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0', transform: 'translateY(10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #020617;
+            color: #f8fafc;
+            background-image: linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            min-height: 100vh;
+        }
+
+        /* Video Container (16:9) */
+        .video-container {
+            position: relative;
+            padding-bottom: 56.25%;
+            height: 0;
+            overflow: hidden;
+            background: #000;
+            border-radius: 16px;
+            box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .video-container iframe {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        /* Notes Specific Styles */
+        .notes-content p, .notes-content li {
+            font-family: 'Merriweather', serif;
+            color: #cbd5e1;
+            line-height: 1.8;
+            margin-bottom: 1rem;
+        }
+        .notes-content h2 {
+            font-family: 'Inter', sans-serif;
+            color: #60a5fa; /* Blue-400 */
+            font-weight: 700;
+            font-size: 1.5rem;
+            margin-top: 3rem;
+            margin-bottom: 1rem;
+            border-left: 4px solid #3b82f6; /* Blue-500 */
+            padding-left: 1rem;
+        }
+        .notes-content h3 {
+            font-family: 'Inter', sans-serif;
+            color: #f8fafc;
+            font-weight: 600;
+            font-size: 1.25rem;
+            margin-top: 2rem;
+            margin-bottom: 0.75rem;
+        }
+        .notes-content strong { color: #fff; }
+        .notes-content ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1.5rem; }
+        .notes-content ol { list-style-type: decimal; padding-left: 1.5rem; margin-bottom: 1.5rem; }
+        
+        .formula-box {
+            background-color: #1e293b;
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin: 1.5rem 0;
+            text-align: center;
+            font-family: 'Inter', sans-serif;
+            overflow-x: auto;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+
+        .note-highlight {
+            background-color: rgba(59, 130, 246, 0.1); 
+            border-left: 4px solid #3b82f6;
+            padding: 1rem 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 0 8px 8px 0;
+            font-style: italic;
+        }
+
+        /* --- CHAPTER 6 ANIMATIONS (Ported from EMI.html) --- */
+        .diagram-container {
+            background-color: #0f172a;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 30px;
+            margin: 2rem 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            text-align: center;
+        }
+        .caption {
+            margin-top: 15px; font-size: 0.85rem; color: #94a3b8; font-family: 'Inter', sans-serif; font-weight: bold;
+        }
+
+        /* Animation 1: Faraday's Experiment */
+        .faraday-setup { width: 300px; height: 150px; position: relative; display: flex; align-items: center; }
+        .coil {
+            width: 60px; height: 100px; border: 4px solid #9ca3af; border-radius: 50% / 10%; position: absolute; right: 50px;
+            background: repeating-linear-gradient(90deg, transparent, transparent 5px, rgba(255,255,255,0.1) 5px, rgba(255,255,255,0.1) 10px);
+        }
+        .bar-magnet { width: 80px; height: 30px; display: flex; position: absolute; left: 0; animation: moveMagnet 3s infinite ease-in-out; }
+        .pole-n { background-color: #ef4444; width: 50%; color: white; display: flex; justify-content: center; align-items: center; font-weight: bold; }
+        .pole-s { background-color: #3b82f6; width: 50%; color: white; display: flex; justify-content: center; align-items: center; font-weight: bold; }
+        .galvanometer-needle { width: 40px; height: 40px; border-radius: 50%; border: 2px solid white; position: absolute; right: 60px; bottom: -20px; display: flex; justify-content: center; align-items: center; }
+        .needle-arrow { width: 2px; height: 15px; background-color: #facc15; transform-origin: bottom; animation: deflectNeedle 3s infinite ease-in-out; }
+        @keyframes moveMagnet { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(100px); } }
+        @keyframes deflectNeedle { 0%, 100% { transform: rotate(0deg); } 25% { transform: rotate(30deg); } 50% { transform: rotate(0deg); } 75% { transform: rotate(-30deg); } }
+
+        /* Animation 2: Lenz's Law */
+        .lenz-box { width: 300px; height: 180px; position: relative; display: flex; justify-content: center; align-items: center; }
+        .lenz-coil {
+            width: 80px; height: 120px; border: 5px solid #d97706; border-radius: 50%; position: absolute;
+            box-shadow: 0 0 10px rgba(217, 119, 6, 0.3); perspective: 500px;
+        }
+        .lenz-magnet { width: 80px; height: 30px; display: flex; position: absolute; left: 0; animation: lenzMove 4s infinite linear; }
+        .induced-field {
+            position: absolute; width: 0; height: 0; border-top: 10px solid transparent; border-bottom: 10px solid transparent;
+            border-right: 20px solid #facc15; left: 130px; opacity: 0; animation: showOpposingField 4s infinite linear;
+        }
+        .current-arrow {
+            width: 20px; height: 20px; border: 2px solid #facc15; border-radius: 50%; border-bottom-color: transparent; border-left-color: transparent;
+            position: absolute; top: 30px; right: 110px; transform: rotate(45deg); opacity: 0; animation: showCurrent 4s infinite linear;
+        }
+        @keyframes lenzMove { 0% { transform: translateX(0); } 40% { transform: translateX(100px); } 60% { transform: translateX(100px); } 100% { transform: translateX(0); } }
+        @keyframes showOpposingField { 0%, 40% { opacity: 0; } 10%, 30% { opacity: 1; transform: translateX(-10px); } }
+        @keyframes showCurrent { 0%, 40% { opacity: 0; } 10%, 30% { opacity: 1; } }
+
+        /* Animation 3: Motional EMF */
+        .rail-system { width: 300px; height: 150px; position: relative; border: 1px dashed #4b5563; }
+        .rail { position: absolute; width: 100%; height: 4px; background-color: #6b7280; }
+        .rail-top { top: 20px; } .rail-bottom { bottom: 20px; }
+        .rod { width: 6px; height: 114px; background-color: #facc15; position: absolute; top: 20px; left: 50px; animation: slideRod 4s infinite linear; }
+        .b-field-cross { position: absolute; color: #4b5563; font-size: 1.2rem; z-index: -1; }
+        @keyframes slideRod { 0% { left: 50px; } 50% { left: 250px; } 100% { left: 50px; } }
+
+        /* Animation 4: Mutual Inductance */
+        .mutual-box { width: 350px; height: 150px; position: relative; display: flex; align-items: center; justify-content: center; gap: 20px; }
+        .coil-primary { width: 80px; height: 60px; border: 3px solid #d97706; border-radius: 10px; display: flex; align-items: center; justify-content: center; position: relative; color: #fff; font-size: 12px; }
+        .coil-secondary { width: 80px; height: 60px; border: 3px solid #d97706; border-radius: 10px; display: flex; align-items: center; justify-content: center; position: relative; color: #fff; font-size: 12px;}
+        .flux-pulse {
+            position: absolute; width: 100px; height: 40px; border: 2px dashed #facc15; border-radius: 20px;
+            left: 50px; opacity: 0; animation: fluxPulse 3s infinite ease-out;
+        }
+        .bulb {
+            width: 15px; height: 15px; background-color: #4b5563; border-radius: 50%;
+            position: absolute; top: -20px; transition: background-color 0.2s; animation: bulbFlash 3s infinite ease-out;
+        }
+        @keyframes fluxPulse { 0% { width: 10px; opacity: 1; left: 85px; } 50% { width: 180px; opacity: 0.5; left: 85px; } 100% { width: 200px; opacity: 0; left: 85px; } }
+        @keyframes bulbFlash { 0%, 100% { background-color: #4b5563; box-shadow: none; } 10%, 40% { background-color: #facc15; box-shadow: 0 0 10px #facc15; } }
+
+        /* Animation 5: AC Generator */
+        .generator-box { width: 200px; height: 200px; position: relative; perspective: 600px; }
+        .armature { width: 100px; height: 60px; border: 3px solid #facc15; position: absolute; top: 70px; left: 50px; transform-style: preserve-3d; animation: rotateCoil 4s infinite linear; }
+        .magnetic-field-lines { position: absolute; width: 100%; height: 100%; background: repeating-linear-gradient(90deg, transparent, transparent 19px, rgba(255,255,255,0.1) 20px); z-index: -1; }
+        @keyframes rotateCoil { 0% { transform: rotateY(0deg); } 100% { transform: rotateY(360deg); } }
+
+
+        /* Quiz Specifics */
+        .quiz-option {
+            background: #1e293b;
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 1rem 1.25rem;
+            border-radius: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .quiz-option:hover { background: #334155; }
+        .quiz-option.selected { background: rgba(96, 165, 250, 0.2); border-color: #60a5fa; }
+        .quiz-circle { width: 20px; height: 20px; border: 2px solid #64748b; border-radius: 50%; flex-shrink: 0; }
+        .quiz-option.selected .quiz-circle { border-color: #60a5fa; background: #60a5fa; }
+
+        /* Pie Chart */
+        .pie-chart {
+            width: 120px; height: 120px; border-radius: 50%;
+            margin: 15px 0;
+            background: conic-gradient(#22c55e 0deg, #ef4444 0deg);
+            position: relative;
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+        }
+        .pie-inner {
+            position: absolute; top: 15px; left: 15px;
+            width: 90px; height: 90px;
+            background: #1e293b; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; color: #fff;
+        }
+
+        /* Graph Container */
+        .graph-container {
+            height: 140px;
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+            padding-bottom: 5px;
+            border-bottom: 2px solid rgba(255,255,255,0.1);
+            margin-top: 20px;
+            overflow-x: auto;
+            width: 100%;
+            padding-right: 10px;
+        }
+        .graph-bar-group {
+            flex: 0 0 auto;
+            min-width: 45px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100%;
+            justify-content: flex-end;
+        }
+        .graph-bar {
+            width: 100%;
+            background: linear-gradient(to top, #3b82f6, #60a5fa);
+            border-radius: 4px 4px 0 0;
+            transition: height 1s ease-out;
+            position: relative;
+            min-height: 4px;
+        }
+        .graph-label {
+            margin-top: 8px; font-size: 0.65rem; color: #94a3b8;
+            text-align: center; width: 100%; white-space: nowrap;
+            overflow: hidden; text-overflow: ellipsis;
+        }
+        .graph-value {
+            position: absolute; top: -18px; left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.65rem; color: #fff; font-weight: bold;
+        }
+        .bar-bg { background: rgba(255,255,255,0.05); height: 6px; border-radius: 99px; overflow: hidden; }
+        .bar-fill { height: 100%; background: #60a5fa; transition: width 1s ease; }
+    </style>
+</head>
+<body class="flex flex-col h-screen overflow-hidden">
+
+    <header class="h-16 border-b border-white/5 bg-[#020617]/90 backdrop-blur-md flex items-center justify-between px-6 z-[100] flex-shrink-0 relative">
+        <div class="flex items-center gap-4">
+            <a href="physics.html" class="w-10 h-10 rounded-full hover:bg-white/5 flex items-center justify-center text-slate-400 hover:text-white transition-all group cursor-pointer" title="Back to Chapters">
+                <svg class="w-5 h-5 group-hover:-translate-x-1 transition-transform pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+            </a>
+            <div>
+                <p class="text-[10px] uppercase tracking-widest text-blue-400 font-bold" id="header-subtitle">Now Watching</p>
+                <h1 id="header-title" class="text-sm md:text-base font-bold text-white truncate max-w-[200px] md:max-w-md">Electromagnetic Induction</h1>
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+            <button id="quiz-back-btn" onclick="exitQuiz()" class="hidden px-3 py-1.5 text-xs font-bold bg-white/10 hover:bg-white/20 rounded-lg text-white transition-colors border border-white/10">
+                Back to Lecture
+            </button>
+            <span class="text-xs text-slate-500 font-medium hidden md:block" id="save-status">Tracking Progress...</span>
+            <div class="flex items-center gap-2 bg-slate-800 px-3 py-1 rounded-full border border-white/10">
+                 <div class="w-2 h-2 rounded-full bg-orange-500 animate-pulse" id="live-indicator"></div>
+                 <span class="text-xs font-bold text-white" id="live-percent">0%</span>
+            </div>
+        </div>
+        <div id="visual-progress" class="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-blue-500 to-cyan-500 transition-all duration-700 ease-in-out shadow-[0_0_10px_rgba(96,165,250,0.5)]" style="width: 0%"></div>
+    </header>
+
+    <main class="flex-grow overflow-y-auto p-4 md:p-8 flex flex-col items-center relative">
+        
+        <div id="content-view" class="w-full max-w-4xl animate-fade-in pb-20">
+            
+            <div class="video-container mb-6">
+                <iframe id="main-player" src="https://www.youtube.com/embed/4U2veZ4IqnE?autoplay=0&rel=0&modestbranding=1" title="Video Player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+            </div>
+
+            <div class="flex flex-col md:flex-row items-center justify-between gap-4 p-6 bg-[#0f172a] border border-white/5 rounded-2xl shadow-lg mb-10">
+                <div class="w-full md:w-auto">
+                    <h2 id="video-title" class="text-2xl font-bold text-white mb-1">Electromagnetic Induction</h2>
+                    <p class="text-slate-400 text-sm">Physics • Class 12 • Chapter 6</p>
+                </div>
+                <div class="flex items-center gap-3 w-full md:w-auto">
+                    <button id="mark-done-btn" onclick="toggleStatus()" class="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-slate-800 border border-slate-600 transition-all text-sm font-semibold text-slate-200 group cursor-not-allowed opacity-50">
+                        <div class="w-5 h-5 rounded-full border-2 border-slate-400 group-hover:border-white flex items-center justify-center">
+                            <svg class="w-3 h-3 text-white opacity-0 transition-opacity check-icon" fill="currentColor" viewBox="0 0 20 20"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"></path></svg>
+                        </div>
+                        <span class="btn-text" id="mark-btn-text">Locked (Studying...)</span>
+                    </button>
+                    
+                    <button onclick="startQuiz()" class="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:-translate-y-0.5 transition-all group">
+                        <span>Take Test</span>
+                        <svg class="w-5 h-5 group-hover:rotate-6 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                    </button>
+                </div>
+            </div>
+
+            <div id="detailed-notes" class="notes-content">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="h-8 w-1 bg-blue-500 rounded-full"></div>
+                    <h2 class="!m-0 !border-0 !p-0 text-3xl text-white">Detailed Physics Notes</h2>
+                </div>
+                
+                <p class="text-slate-400 italic mb-8">Comprehensive notes based on NCERT Class 12 Physics - Chapter 6</p>
+
+                <section id="intro">
+                    <h2>1. Introduction & Faraday's Experiments</h2>
+                    <p><strong>Electromagnetic Induction</strong> is the phenomenon where electric currents are generated by varying magnetic fields. This was discovered by Michael Faraday and Joseph Henry around 1830.</p>
+
+                    <h3>Faraday's Experiments</h3>
+                    <div class="diagram-container">
+                        <div class="faraday-setup">
+                            <div class="bar-magnet">
+                                <div class="pole-n">N</div>
+                                <div class="pole-s">S</div>
+                            </div>
+                            <div class="coil"></div>
+                            <div class="galvanometer-needle">
+                                <div class="needle-arrow"></div>
+                            </div>
+                        </div>
+                        <div class="caption">
+                            <strong>Figure 6.1:</strong> Moving a magnet towards a coil induces a momentary current. The galvanometer deflects only during relative motion.
+                        </div>
+                    </div>
+
+                    <ul>
+                        <li><strong>Experiment 1 (Motion):</strong> When a bar magnet is pushed towards a coil, the galvanometer deflects. It deflects in the opposite direction when the magnet is pulled away.</li>
+                        <li><strong>Experiment 2 (Current Loop):</strong> Replacing the magnet with a current-carrying coil works too. Moving the current-carrying coil induces current in the secondary coil.</li>
+                        <li><strong>Experiment 3 (Changing Current):</strong> Even without motion, if the current in the primary coil changes (e.g., by tapping a key), a momentary current is induced in the secondary coil.</li>
+                    </ul>
+                </section>
+
+                <section id="flux">
+                    <h2>2. Magnetic Flux</h2>
+                    <p>Magnetic flux (\(\Phi_B\)) is proportional to the number of magnetic field lines crossing a surface.</p>
+                    <div class="formula-box">
+                        $$ \Phi_B = \mathbf{B} \cdot \mathbf{A} = BA \cos \theta $$
+                    </div>
+                    <ul>
+                        <li>\(\theta\) is the angle between the magnetic field \(\mathbf{B}\) and the area vector \(\mathbf{A}\).</li>
+                        <li><strong>Unit:</strong> Weber (Wb) or Tesla-meter squared (\(T m^2\)).</li>
+                    </ul>
+                </section>
+
+                <section id="faraday">
+                    <h2>3. Faraday's Law of Induction</h2>
+                    <p><strong>The Law:</strong> The magnitude of the induced emf (\(\varepsilon\)) in a circuit is equal to the time rate of change of magnetic flux through the circuit.</p>
+                    <div class="formula-box">
+                        $$ \varepsilon = - \frac{d\Phi_B}{dt} $$
+                    </div>
+                    <p>For a coil with \(N\) turns, the flux change is associated with each turn, so:</p>
+                    <div class="formula-box">
+                        $$ \varepsilon = - N \frac{d\Phi_B}{dt} $$
+                    </div>
+                    <p>The negative sign indicates the direction of the induced emf (Lenz's Law).</p>
+                </section>
+
+                <section id="lenz">
+                    <h2>4. Lenz's Law</h2>
+                    <p><strong>Statement:</strong> The polarity of induced emf is such that it tends to produce a current which <strong>opposes</strong> the change in magnetic flux that produced it.</p>
+                    
+                    <div class="diagram-container">
+                        <div class="lenz-box">
+                            <div class="lenz-magnet">
+                                <div class="pole-n">N</div>
+                                <div class="pole-s">S</div>
+                            </div>
+                            <div class="lenz-coil"></div>
+                            <div class="induced-field"></div> <div class="current-arrow"></div> 
+                        </div>
+                        <div class="caption">
+                            <strong>Figure 6.2:</strong> As the North pole approaches, the coil induces a North pole (yellow field arrow) to repel it, opposing the motion.
+                        </div>
+                    </div>
+
+                    <p>This law is a consequence of the **Conservation of Energy**. Work must be done against this repulsive force to move the magnet, which is converted into electrical energy.</p>
+                </section>
+
+                <section id="motional">
+                    <h2>5. Motional Electromotive Force</h2>
+                    <p>When a conductor moves in a magnetic field, the charge carriers experience a Lorentz force, causing charge separation and inducing an emf.</p>
+
+                    <div class="diagram-container">
+                        <div class="rail-system">
+                            <div class="b-field-cross" style="top:20px; left:20px;">×</div>
+                            <div class="b-field-cross" style="top:80px; left:100px;">×</div>
+                            <div class="b-field-cross" style="top:40px; left:200px;">×</div>
+                            <div class="rail rail-top"></div>
+                            <div class="rail rail-bottom"></div>
+                            <div class="rod"></div>
+                        </div>
+                        <div class="caption">
+                            <strong>Figure 6.3:</strong> A rod moving with velocity \(v\) on rails in a magnetic field \(B\) induces emf.
+                        </div>
+                    </div>
+
+                    <div class="formula-box">
+                        $$ \varepsilon = B l v $$
+                    </div>
+                    <p>Where \(l\) is the length, \(v\) is velocity, and \(B\) is the magnetic field (all mutually perpendicular).</p>
+                </section>
+
+                <section id="inductance">
+                    <h2>6. Inductance</h2>
+                    <p>Flux linkage (\(N\Phi\)) is proportional to current (\(I\)). The constant of proportionality is called Inductance.</p>
+                    
+                    <h3>Mutual Inductance</h3>
+                    <p>When current changes in one coil, it induces emf in a neighboring coil.</p>
+                    
+                    <div class="diagram-container">
+                        <div class="mutual-box">
+                            <div class="coil-primary">Primary (I)</div>
+                            <div class="flux-pulse"></div> 
+                            <div class="coil-secondary">Secondary<div class="bulb"></div></div>
+                        </div>
+                        <div class="caption">
+                            <strong>Figure 6.4:</strong> A changing flux from the Primary coil reaches the Secondary coil, inducing a current (bulb flash).
+                        </div>
+                    </div>
+
+                    <div class="formula-box">
+                        $$ N_2 \Phi_2 = M_{21} I_1 $$
+                        $$ \varepsilon_2 = -M_{21} \frac{dI_1}{dt} $$
+                    </div>
+                    <p>Reciprocity Theorem: For two coils, the mutual inductance is the same regardless of which carries the current:</p>
+                    <div class="formula-box">
+                        $$ M_{12} = M_{21} = M $$
+                    </div>
+
+                    <h3>Self-Inductance</h3>
+                    <p>The phenomenon where a changing current in a coil induces a back emf in the <strong>same coil</strong>.</p>
+                    <div class="formula-box">
+                        $$ \varepsilon = -L \frac{dI}{dt} $$
+                    </div>
+                    <p>For a long solenoid: \( L = \mu_0 n^2 A l \). Energy stored in an inductor: \( U = \frac{1}{2} L I^2 \).</p>
+                </section>
+
+                <section id="ac-gen">
+                    <h2>7. AC Generator</h2>
+                    <p>An AC generator converts mechanical energy into electrical energy. It works on the principle of electromagnetic induction by rotating a coil in a magnetic field.</p>
+
+                    <div class="diagram-container">
+                        <div class="generator-box">
+                            <div class="magnetic-field-lines"></div>
+                            <div class="armature"></div>
+                        </div>
+                        <div class="caption">
+                            <strong>Figure 6.5:</strong> As the coil rotates, the magnetic flux through it changes continuously, generating an Alternating Current (AC).
+                        </div>
+                    </div>
+
+                    <p>When the coil is rotated with angular speed \(\omega\), the angle is \(\theta = \omega t\). The magnetic flux is:</p>
+                    <div class="formula-box">
+                        $$ \Phi_B = B A \cos(\omega t) $$
+                    </div>
+                    
+                    <p>From Faraday's law, the induced emf is:</p>
+                    <div class="formula-box">
+                        $$ \varepsilon = -N \frac{d\Phi_B}{dt} = -NBA \frac{d}{dt}(\cos \omega t) = NBA \omega \sin(\omega t) $$
+                    </div>
+                    <p>Where \(\varepsilon_0 = NBA\omega\) is the maximum emf.</p>
+                </section>
+                <div class="mt-10 pt-6 border-t border-white/10 text-center text-slate-500 text-sm">
+                    BRO YOU CAN AND YOU WILL ⚡
+                </div>
+            </div>
+        </div>
+
+        <div id="quiz-view" class="w-full max-w-4xl flex-col items-center animate-fade-in hidden pb-20">
+            <div class="w-full bg-[#1e293b] border border-white/5 rounded-2xl p-4 mb-6 flex justify-between items-center shadow-lg">
+                <h2 class="text-xl font-bold text-white">Physics Master Quiz</h2>
+                <div class="px-3 py-1 bg-black/30 rounded-lg border border-white/10 font-mono text-lg text-white" id="timer">15:00</div>
+            </div>
+
+            <div id="screen-start" class="w-full bg-[#0f172a] border border-white/5 rounded-2xl p-8 text-center shadow-lg flex flex-col items-center">
+                <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-600 flex items-center justify-center mb-6 shadow-lg shadow-blue-500/20">
+                    <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </div>
+                <h2 class="text-3xl font-bold text-white mb-2">Practice Quiz</h2>
+                <p class="text-slate-400 mb-8">15 Questions • 15 Minutes • Board Level MCQs</p>
+                <button onclick="quizApp.start()" class="px-8 py-3 rounded-xl bg-white text-black font-bold hover:scale-105 transition-transform">Start Now</button>
+            </div>
+
+            <div id="screen-quiz" class="w-full hidden flex-col">
+                <div class="mb-6">
+                    <div class="text-blue-400 font-bold text-sm tracking-wider mb-2">QUESTION <span id="q-idx">1</span>/15</div>
+                    <div id="q-text" class="text-xl md:text-2xl font-bold text-white leading-relaxed">Loading...</div>
+                </div>
+                <div id="options-box" class="space-y-3 mb-8 w-full"></div>
+                <div class="flex justify-end">
+                    <button id="btn-next" onclick="quizApp.next()" disabled class="px-6 py-3 rounded-xl bg-blue-600 text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-500 transition-colors">Next Question</button>
+                </div>
+            </div>
+
+            <div id="screen-result" class="w-full hidden flex-col">
+                <div class="bg-[#1e293b] border border-white/5 rounded-2xl p-6 mb-6 flex flex-col md:flex-row items-center justify-between gap-6 shadow-lg">
+                    <div class="text-center md:text-left">
+                        <p class="text-slate-400 text-xs uppercase tracking-widest font-bold mb-1">Total Score</p>
+                        <div class="text-5xl font-black text-white"><span id="score">0</span><span class="text-2xl text-slate-500">/15</span></div>
+                        <div id="score-text" class="text-green-400 font-bold mt-2">0% Accuracy</div>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <div class="pie-chart" id="chart-pie">
+                            <div class="pie-inner" id="pie-text">0%</div>
+                        </div>
+                    </div>
+                    <div class="flex gap-3">
+                        <button onclick="quizApp.start()" class="px-5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition-colors border border-white/10">Retake Quiz</button>
+                        <button onclick="exitQuiz()" class="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-colors">Finish & Save</button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <div class="bg-[#1e293b] border border-white/5 rounded-2xl p-6 shadow-lg">
+                        <div class="text-slate-400 text-xs uppercase tracking-widest font-bold mb-4 flex items-center gap-2">
+                            <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z"></path></svg>
+                            Topic Wise Performance
+                        </div>
+                        <div id="chart-bars" class="space-y-4"></div>
+                    </div>
+
+                    <div class="bg-[#1e293b] border border-white/5 rounded-2xl p-6 shadow-lg">
+                        <div class="text-slate-400 text-xs uppercase tracking-widest font-bold mb-4 flex items-center gap-2">
+                            <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path></svg>
+                            Analysis Graph
+                        </div>
+                        <div id="topic-graph" class="graph-container">
+                        </div>
+                    </div>
+                </div>
+
+                <h3 class="text-xl font-bold text-white mb-4 pl-1 border-l-4 border-blue-500">Detailed Review</h3>
+                <div id="review-box" class="space-y-4 w-full"></div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // --- 1. SMART PROGRESS TRACKING LOGIC (UPDATED FOR CHAPTER 6) ---
+        const KEY_PROGRESS = 'physics_chapter_6_progress'; 
+        const KEY_STATE = 'physics_chapter_6_state';       
+
+        const LOCK_TIME = 7200; // 2 HOURS
+        const INTERVAL_DURATION = 1800; // 30 Minutes
+
+        const DEFAULT_STATE = {
+            manual: false, // Worth 50%
+            test: false,   // Worth 20%
+            timeIntervals: 0, // Max 4, worth 7.5% each (Total 30%)
+            timeSpentSeconds: 0 
+        };
+        
+        let chapterState = { ...DEFAULT_STATE };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadState();
+            startTimer();
+            updateUI();
+            saveAndCalculate(); 
+        });
+
+        function loadState() {
+            const savedState = localStorage.getItem(KEY_STATE);
+            if (savedState) {
+                try {
+                    const parsed = JSON.parse(savedState);
+                    chapterState = { ...DEFAULT_STATE, ...parsed };
+                    if(typeof chapterState.timeIntervals !== 'number') chapterState.timeIntervals = 0;
+                    if(typeof chapterState.timeSpentSeconds !== 'number') chapterState.timeSpentSeconds = 0;
+                } catch(e) {
+                    console.error("State load error, resetting", e);
+                    chapterState = { ...DEFAULT_STATE };
+                }
+            }
+        }
+
+        function saveAndCalculate() {
+            localStorage.setItem(KEY_STATE, JSON.stringify(chapterState));
+            
+            // MATH: 50% + 20% + (4 * 7.5%) = 100%
+            let percent = 0;
+            if (chapterState.manual) percent += 50;
+            if (chapterState.test) percent += 20;
+            percent += (chapterState.timeIntervals * 7.5);
+
+            if (percent > 100) percent = 100; 
+            
+            const displayPercent = Math.floor(percent);
+
+            localStorage.setItem(KEY_PROGRESS, displayPercent.toString());
+
+            const indicator = document.getElementById('live-indicator');
+            const txt = document.getElementById('live-percent');
+            const bar = document.getElementById('visual-progress');
+            
+            if(txt) txt.innerText = `${displayPercent}%`;
+            if(bar) bar.style.width = `${displayPercent}%`;
+            
+            if (indicator) {
+                if (displayPercent === 100) {
+                    indicator.classList.remove('bg-orange-500', 'animate-pulse');
+                    indicator.classList.add('bg-green-500');
+                } else {
+                    indicator.classList.add('bg-orange-500', 'animate-pulse');
+                    indicator.classList.remove('bg-green-500');
+                }
+            }
+        }
+
+        function startTimer() {
+            setInterval(() => {
+                chapterState.timeSpentSeconds++;
+                
+                // 1. INTERVAL CHECK
+                let currentIntervals = Math.floor(chapterState.timeSpentSeconds / INTERVAL_DURATION);
+                if (currentIntervals > 4) currentIntervals = 4;
+
+                if (currentIntervals > chapterState.timeIntervals) {
+                    chapterState.timeIntervals = currentIntervals;
+                    saveAndCalculate();
+                    const status = document.getElementById('save-status');
+                    if(status) {
+                        status.innerText = `Progress Added (+7.5%)`;
+                        setTimeout(() => status.innerText = "Tracking Progress...", 3000);
+                    }
+                }
+
+                // 2. UNLOCK CHECK
+                const isLockedUI = document.getElementById('mark-btn-text').innerText.includes('Locked');
+                if (chapterState.timeSpentSeconds >= LOCK_TIME && isLockedUI) {
+                    updateUI(); 
+                    const status = document.getElementById('save-status');
+                    if(status) status.innerText = "Chapter Unlocked!";
+                }
+
+                if (chapterState.timeSpentSeconds % 10 === 0) {
+                    localStorage.setItem(KEY_STATE, JSON.stringify(chapterState));
+                }
+            }, 1000);
+        }
+
+        function toggleStatus() {
+            if (chapterState.timeSpentSeconds < LOCK_TIME && !chapterState.manual) {
+                alert("You must watch this lecture for at least 2 hours before marking it as complete.");
+                return;
+            }
+            chapterState.manual = !chapterState.manual; 
+            updateUI(); 
+            saveAndCalculate(); 
+        }
+
+        function updateUI() {
+            const btn = document.getElementById('mark-done-btn');
+            if(!btn) return;
+            
+            const icon = btn.querySelector('.check-icon');
+            const text = document.getElementById('mark-btn-text');
+            const circle = btn.querySelector('div');
+            const isLocked = chapterState.timeSpentSeconds < LOCK_TIME && !chapterState.manual;
+
+            if (chapterState.manual) {
+                btn.classList.remove('bg-slate-800', 'opacity-50', 'cursor-not-allowed');
+                btn.classList.add('bg-green-600', 'hover:bg-green-500', 'border-green-500', 'text-white');
+                circle.classList.remove('border-slate-400');
+                circle.classList.add('border-white', 'bg-white/20');
+                icon.classList.remove('opacity-0');
+                text.innerText = "Completed";
+            } else if (isLocked) {
+                btn.classList.add('bg-slate-800', 'opacity-50', 'cursor-not-allowed');
+                btn.classList.remove('bg-green-600', 'hover:bg-green-500', 'border-green-500', 'text-white');
+                circle.classList.add('border-slate-400');
+                circle.classList.remove('border-white', 'bg-white/20');
+                icon.classList.add('opacity-0');
+                text.innerText = "Locked (Studying...)";
+            } else {
+                btn.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-green-600');
+                btn.classList.add('bg-slate-800', 'hover:bg-slate-700');
+                circle.classList.add('border-slate-400');
+                icon.classList.add('opacity-0');
+                text.innerText = "Mark Complete";
+            }
+        }
+
+        function finishQuizInternal() {
+            if (!chapterState.test) {
+                chapterState.test = true;
+                saveAndCalculate();
+            }
+        }
+
+        const contentView = document.getElementById('content-view');
+        const quizView = document.getElementById('quiz-view');
+        const headerSub = document.getElementById('header-subtitle');
+        const quizBackBtn = document.getElementById('quiz-back-btn');
+        const saveStatus = document.getElementById('save-status');
+
+        function startQuiz() {
+            contentView.classList.add('hidden');
+            quizView.classList.remove('hidden');
+            quizView.classList.add('flex');
+            headerSub.innerText = "Quiz Mode";
+            quizBackBtn.classList.remove('hidden');
+            saveStatus.classList.add('hidden');
+            const iframe = document.getElementById('main-player');
+            const src = iframe.src;
+            iframe.src = ''; 
+            iframe.setAttribute('data-src', src); 
+        }
+
+        function exitQuiz() {
+            quizView.classList.add('hidden');
+            quizView.classList.remove('flex');
+            contentView.classList.remove('hidden');
+            headerSub.innerText = "Now Watching";
+            quizBackBtn.classList.add('hidden');
+            saveStatus.classList.remove('hidden');
+            const iframe = document.getElementById('main-player');
+            const savedSrc = iframe.getAttribute('data-src');
+            if(savedSrc) iframe.src = savedSrc;
+        }
+
+        // --- QUESTION DATA (From TEST.HTML) ---
+        const questions = [
+            {
+                id: 1,
+                text: "The polarity of induced emf is such that it tends to produce a current which opposes the change in magnetic flux that produced it. This is known as:",
+                options: ["Faraday's Law", "Lenz's Law", "Ampere's Law", "Biot-Savart Law"],
+                correct: 1,
+                topic: "Lenz's Law",
+                explanation: "Lenz's law provides the direction of induced emf/current, ensuring it opposes the change in flux causing it."
+            },
+            {
+                id: 2,
+                text: "According to Faraday's Law of Induction, the induced emf is proportional to:",
+                options: ["Magnetic flux", "Rate of change of magnetic flux", "Change in magnetic flux", "Magnetic field strength"],
+                correct: 1,
+                topic: "Faraday's Law",
+                explanation: "The magnitude of induced emf is equal to the time rate of change of magnetic flux: ε = -dΦ/dt."
+            },
+            {
+                id: 3,
+                text: "Lenz's law is a consequence of the law of conservation of:",
+                options: ["Charge", "Momentum", "Energy", "Mass"],
+                correct: 2,
+                topic: "Conservation Laws",
+                explanation: "The mechanical work done against the opposing force (due to induced current) is converted into electrical energy, satisfying energy conservation."
+            },
+            {
+                id: 4,
+                text: "A rectangular loop moves out of a uniform magnetic field region with constant velocity v. The induced emf is constant only if:",
+                options: ["The loop is circular", "The loop is rectangular", "The velocity is variable", "The field is non-uniform"],
+                correct: 1,
+                topic: "Motional EMF",
+                explanation: "For a rectangular loop moving with constant velocity, the rate of change of area (and flux) is constant, giving a constant emf."
+            },
+            {
+                id: 5,
+                text: "The magnetic flux through a surface is given by Φ = B.A. The unit of magnetic flux is:",
+                options: ["Tesla", "Weber", "Henry", "Farad"],
+                correct: 1,
+                topic: "Magnetic Flux",
+                explanation: "The SI unit of magnetic flux is Weber (Wb) or Tesla meter squared (T m²)."
+            },
+            {
+                id: 6,
+                text: "The motional emf induced in a rod of length 'l' moving with velocity 'v' perpendicular to a uniform magnetic field 'B' is:",
+                options: ["Blv", "Bv/l", "Bl/v", "v/Bl"],
+                correct: 0,
+                topic: "Motional EMF",
+                explanation: "The formula for motional emf is ε = Blv."
+            },
+            {
+                id: 7,
+                text: "Self-inductance (L) of a long solenoid depends on:",
+                options: ["Current flowing through it", "Voltage applied", "Geometry and core material", "Time of current flow"],
+                correct: 2,
+                topic: "Inductance",
+                explanation: "Self-inductance depends on geometry (Area, Length, Turns) and permeability of the medium (μ), not on current or voltage."
+            },
+            {
+                id: 8,
+                text: "The energy stored in an inductor of inductance L carrying current I is given by:",
+                options: ["LI²", "1/2 LI²", "1/2 L²I", "1/2 LI"],
+                correct: 1,
+                topic: "Energy in Inductor",
+                explanation: "The work done in building up current is stored as magnetic potential energy: U = 1/2 LI²."
+            },
+            {
+                id: 9,
+                text: "In an AC generator, the induced emf varies sinusoidally with time. The maximum value of emf (ε₀) is:",
+                options: ["NBA", "NBAω", "NB/ω", "NA/Bω"],
+                correct: 1,
+                topic: "AC Generator",
+                explanation: "The peak emf is ε₀ = NBAω, where N is turns, B is field, A is area, and ω is angular speed."
+            },
+            {
+                id: 10,
+                text: "If the number of turns in a coil is doubled, its self-inductance becomes:",
+                options: ["Doubled", "Halved", "Four times", "Unchanged"],
+                correct: 2,
+                topic: "Self-Inductance",
+                explanation: "Self-inductance L ∝ N². If N is doubled, L becomes (2)² = 4 times."
+            },
+            {
+                id: 11,
+                text: "Eddy currents are produced when:",
+                options: ["A metal is kept in a steady magnetic field", "A metal is kept in a varying magnetic field", "A circular coil is placed in a magnetic field", "Current is passed through a wire"],
+                correct: 1,
+                topic: "Eddy Currents",
+                explanation: "Eddy currents are loops of electric current induced within conductors by a changing magnetic field in the conductor."
+            },
+            {
+                id: 12,
+                text: "The SI unit of Inductance (Self or Mutual) is:",
+                options: ["Weber", "Tesla", "Henry", "Gauss"],
+                correct: 2,
+                topic: "Units",
+                explanation: "The SI unit of inductance is Henry (H)."
+            },
+            {
+                id: 13,
+                text: "A metallic rod of length 1m is rotated with frequency 50 rev/s with one end hinged at the centre and the other at the circumference of a circular metallic ring of radius 1m, about an axis passing through the centre and perpendicular to the plane of the ring. A constant and uniform magnetic field of 1T parallel to the axis is present everywhere. What is the emf between the centre and the metallic ring?",
+                options: ["157 V", "100 V", "50 V", "314 V"],
+                correct: 0,
+                topic: "Rotational EMF",
+                explanation: "ε = (BωR²)/2. ω = 2πν = 100π. ε = (1 * 100π * 1²)/2 = 50π ≈ 157 V."
+            },
+            {
+                id: 14,
+                text: "Two coils have a mutual inductance M = 1.5 H. If current in one coil changes from 0 to 20 A in 0.5 s, the change of flux linkage with the other coil is:",
+                options: ["30 Wb", "15 Wb", "10 Wb", "60 Wb"],
+                correct: 0,
+                topic: "Mutual Inductance",
+                explanation: "Change in flux NΦ = M * change in I. ΔΦ = 1.5 * (20 - 0) = 30 Wb."
+            },
+            {
+                id: 15,
+                text: "Current in a circuit falls from 5.0 A to 0.0 A in 0.1 s. If an average emf of 200 V is induced, the self-inductance of the circuit is:",
+                options: ["4 H", "2 H", "0.4 H", "40 H"],
+                correct: 0,
+                topic: "Self-Inductance",
+                explanation: "ε = -L(dI/dt) => 200 = -L(0 - 5)/0.1 => 200 = L(50) => L = 4 H."
+            }
+        ];
+
+        const quizApp = {
+            idx: 0, answers: Array(questions.length).fill(null), timer: 900, interval: null,
+
+            start: function() {
+                this.idx = 0; this.answers.fill(null); this.timer = 900;
+                document.getElementById('screen-start').classList.add('hidden');
+                document.getElementById('screen-result').classList.add('hidden');
+                document.getElementById('screen-result').classList.remove('flex');
+                const quizScreen = document.getElementById('screen-quiz');
+                quizScreen.classList.remove('hidden');
+                quizScreen.classList.add('flex');
+                this.renderQ();
+                this.startTimer();
+            },
+
+            startTimer: function() {
+                clearInterval(this.interval);
+                this.interval = setInterval(() => {
+                    if(this.timer <= 0) { this.finish(); return; }
+                    this.timer--;
+                    const m = Math.floor(this.timer / 60);
+                    const s = this.timer % 60;
+                    document.getElementById('timer').innerText = `${m}:${s < 10 ? '0'+s : s}`;
+                }, 1000);
+            },
+
+            renderQ: function() {
+                const q = questions[this.idx];
+                document.getElementById('q-idx').innerText = this.idx + 1;
+                document.getElementById('q-text').innerText = q.text;
+                const box = document.getElementById('options-box');
+                box.innerHTML = '';
+                const nextBtn = document.getElementById('btn-next');
+                nextBtn.disabled = true;
+                nextBtn.innerText = (this.idx === questions.length - 1) ? "Submit Quiz" : "Next Question";
+
+                q.options.forEach((opt, i) => {
+                    const div = document.createElement('div');
+                    div.className = 'quiz-option';
+                    div.innerHTML = `<div class="quiz-circle"></div><span class="text-slate-300 font-medium">${opt}</span>`;
+                    div.onclick = () => this.select(i, div);
+                    box.appendChild(div);
+                });
+            },
+
+            select: function(optIdx, el) {
+                this.answers[this.idx] = optIdx;
+                document.querySelectorAll('.quiz-option').forEach(x => x.classList.remove('selected'));
+                el.classList.add('selected');
+                document.getElementById('btn-next').disabled = false;
+            },
+
+            next: function() {
+                if(this.idx < questions.length - 1) { this.idx++; this.renderQ(); } 
+                else { this.finish(); }
+            },
+
+            finish: function() {
+                clearInterval(this.interval);
+                let correctCount = 0;
+                let topicStats = {};
+
+                questions.forEach((q, i) => {
+                    const isCorrect = (this.answers[i] === q.correct);
+                    if(isCorrect) correctCount++;
+                    if(!topicStats[q.topic]) topicStats[q.topic] = { total: 0, right: 0 };
+                    topicStats[q.topic].total++;
+                    if(isCorrect) topicStats[q.topic].right++;
+                });
+
+                document.getElementById('screen-quiz').classList.add('hidden');
+                document.getElementById('screen-quiz').classList.remove('flex');
+                const resultScreen = document.getElementById('screen-result');
+                resultScreen.classList.remove('hidden');
+                resultScreen.classList.add('flex');
+
+                document.getElementById('score').innerText = correctCount;
+                const pct = Math.round((correctCount / questions.length) * 100);
+                document.getElementById('score-text').innerText = `${pct}% Accuracy`;
+                const deg = (correctCount / questions.length) * 360;
+                document.getElementById('chart-pie').style.background = `conic-gradient(#22c55e 0deg ${deg}deg, #ef4444 ${deg}deg 360deg)`;
+                document.getElementById('pie-text').innerText = `${pct}%`;
+
+                const barBox = document.getElementById('chart-bars');
+                const graphBox = document.getElementById('topic-graph');
+                barBox.innerHTML = '';
+                graphBox.innerHTML = '';
+
+                for (const [topic, data] of Object.entries(topicStats)) {
+                    const topicPct = Math.round((data.right / data.total) * 100);
+                    barBox.innerHTML += `
+                        <div class="text-sm">
+                            <div class="flex justify-between text-slate-400 mb-1">
+                                <span class="font-medium text-white">${topic}</span>
+                                <span>${data.right}/${data.total}</span>
+                            </div>
+                            <div class="bar-bg"><div class="bar-fill" style="width: ${topicPct}%"></div></div>
+                        </div>`;
+                    graphBox.innerHTML += `
+                        <div class="graph-bar-group">
+                            <div class="graph-bar" style="height: ${topicPct}%;">
+                                <div class="graph-value">${topicPct}%</div>
+                            </div>
+                            <div class="graph-label">${topic}</div>
+                        </div>`;
+                }
+
+                finishQuizInternal(); 
+
+                const reviewBox = document.getElementById('review-box');
+                reviewBox.innerHTML = '';
+                questions.forEach((q, i) => {
+                    const isRight = (this.answers[i] === q.correct);
+                    reviewBox.innerHTML += `
+                        <div class="p-4 rounded-xl border border-white/5 bg-[#1e293b] ${isRight ? 'border-l-4 border-l-green-500' : 'border-l-4 border-l-red-500'}">
+                            <p class="font-bold text-white mb-2 text-base">Q${i+1}: ${q.text}</p>
+                            <div class="text-sm mb-2"><span class="${isRight ? 'text-green-400' : 'text-red-400'}">Answer: ${this.answers[i]!==null?q.options[this.answers[i]]:'Skipped'}</span></div>
+                            <div class="text-xs text-slate-400">${q.explanation}</div>
+                        </div>`;
+                });
+            }
+        };
+    </script>
+</body>
+</html>

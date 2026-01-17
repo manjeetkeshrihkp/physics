@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lecture Player | JEE Matrix</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=Merriweather:ital,wght@0,300;0,400;0,700;1,400&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { 
+                        sans: ['Inter', 'sans-serif'],
+                        serif: ['Merriweather', 'serif'],
+                    },
+                    colors: { background: '#020617' },
+                    animation: { 'fade-in': 'fadeIn 0.5s ease-out forwards' },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0', transform: 'translateY(10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #020617;
+            color: #f8fafc;
+            background-image: linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            min-height: 100vh;
+        }
+
+        /* Video Container (16:9) */
+        .video-container {
+            position: relative;
+            padding-bottom: 56.25%;
+            height: 0;
+            overflow: hidden;
+            background: #000;
+            border-radius: 16px;
+            box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .video-container iframe {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        /* Notes Specific Styles */
+        .notes-content p, .notes-content li {
+            font-family: 'Merriweather', serif;
+            color: #cbd5e1;
+            line-height: 1.8;
+            margin-bottom: 1rem;
+        }
+        .notes-content h2 {
+            font-family: 'Inter', sans-serif;
+            color: #14b8a6; /* Teal-500 */
+            font-weight: 700;
+            font-size: 1.5rem;
+            margin-top: 3rem;
+            margin-bottom: 1rem;
+            border-left: 4px solid #0d9488; /* Teal-600 */
+            padding-left: 1rem;
+        }
+        .notes-content h3 {
+            font-family: 'Inter', sans-serif;
+            color: #f8fafc;
+            font-weight: 600;
+            font-size: 1.25rem;
+            margin-top: 2rem;
+            margin-bottom: 0.75rem;
+        }
+        .notes-content strong { color: #fff; }
+        .notes-content ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1.5rem; }
+        .notes-content ol { list-style-type: decimal; padding-left: 1.5rem; margin-bottom: 1.5rem; }
+        
+        .formula-box {
+            background-color: #1e293b;
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin: 1.5rem 0;
+            text-align: center;
+            font-family: 'Inter', sans-serif;
+            overflow-x: auto;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+
+        .note-highlight {
+            background-color: rgba(20, 184, 166, 0.1); 
+            border-left: 4px solid #14b8a6;
+            padding: 1rem 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 0 8px 8px 0;
+            font-style: italic;
+        }
+
+        /* --- CHAPTER 14 ANIMATIONS (Ported from Semicond.html) --- */
+        .diagram-container {
+            background-color: #0f172a;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 30px;
+            margin: 2rem 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            text-align: center;
+        }
+        .caption { margin-top: 15px; font-size: 0.85rem; color: #94a3b8; font-family: 'Inter', sans-serif; font-weight: bold; }
+
+        /* Animation 1: Energy Bands */
+        .band-box { width: 300px; height: 200px; position: relative; border-left: 2px solid white; }
+        .conduction-band {
+            position: absolute; top: 20px; left: 50px; width: 200px; height: 50px;
+            background: linear-gradient(to bottom, rgba(59, 130, 246, 0.3), rgba(59, 130, 246, 0.6));
+            border: 1px solid #3b82f6; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.8rem;
+        }
+        .valence-band {
+            position: absolute; bottom: 20px; left: 50px; width: 200px; height: 50px;
+            background: linear-gradient(to top, rgba(16, 185, 129, 0.3), rgba(16, 185, 129, 0.6));
+            border: 1px solid #10b981; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.8rem;
+        }
+        .electron-jump {
+            width: 10px; height: 10px; background-color: #ef4444; border-radius: 50%;
+            position: absolute; bottom: 40px; left: 100px; animation: jump 3s infinite ease-in-out;
+        }
+        .hole-remain {
+            width: 10px; height: 10px; border: 1px solid white; border-radius: 50%;
+            position: absolute; bottom: 40px; left: 100px; animation: holeFade 3s infinite ease-in-out;
+        }
+        .gap-arrow { position: absolute; left: 260px; top: 70px; height: 60px; width: 2px; background-color: white; }
+        .gap-arrow::before { content: 'Eg'; position: absolute; left: 5px; top: 20px; color: white; font-size: 0.8rem; }
+        @keyframes jump { 0%, 20% { bottom: 40px; opacity: 1; } 40% { bottom: 150px; } 60% { bottom: 150px; opacity: 1; } 80% { bottom: 40px; opacity: 1; } }
+        @keyframes holeFade { 0%, 20% { opacity: 0; } 21% { opacity: 1; } 80% { opacity: 1; } 81% { opacity: 0; } }
+
+        /* Animation 2: P-N Junction */
+        .pn-box { width: 300px; height: 150px; position: relative; display: flex; }
+        .p-region { width: 50%; height: 100%; background-color: rgba(59, 130, 246, 0.1); border-right: 1px dashed white; position: relative; }
+        .n-region { width: 50%; height: 100%; background-color: rgba(239, 68, 68, 0.1); position: relative; }
+        .hole-particle { width: 8px; height: 8px; border: 1px solid #3b82f6; border-radius: 50%; position: absolute; animation: diffuseHole 4s infinite linear; }
+        .elec-particle { width: 8px; height: 8px; background-color: #ef4444; border-radius: 50%; position: absolute; animation: diffuseElec 4s infinite linear; }
+        .depletion-zone {
+            position: absolute; left: 40%; width: 20%; height: 100%; background: linear-gradient(90deg, rgba(0,0,0,0.2), rgba(0,0,0,0.5), rgba(0,0,0,0.2));
+            z-index: 0; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 0.7rem; text-align: center;
+        }
+        @keyframes diffuseHole { 0% { left: 20px; top: 50px; opacity: 1; } 50% { left: 160px; top: 60px; opacity: 0; } 100% { left: 20px; top: 50px; opacity: 0; } }
+        @keyframes diffuseElec { 0% { right: 20px; top: 80px; opacity: 1; } 50% { right: 160px; top: 70px; opacity: 0; } 100% { right: 20px; top: 80px; opacity: 0; } }
+
+        /* Animation 3: Rectifier */
+        .rectifier-box { width: 300px; height: 150px; position: relative; display: flex; align-items: center; justify-content: center; }
+        .input-wave {
+            position: absolute; left: 0; width: 100px; height: 60px;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 60'%3E%3Cpath d='M0 30 Q 25 0 50 30 T 100 30' fill='none' stroke='%233b82f6' stroke-width='2'/%3E%3C/svg%3E");
+            animation: slideWave 2s infinite linear;
+        }
+        .rect-block { width: 60px; height: 60px; background-color: #1e293b; border: 2px solid white; position: relative; z-index: 10; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; }
+        .output-wave {
+            position: absolute; right: 0; width: 100px; height: 60px;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 60'%3E%3Cpath d='M0 30 Q 25 0 50 30 Q 75 0 100 30' fill='none' stroke='%23f59e0b' stroke-width='2'/%3E%3C/svg%3E");
+            animation: slideWave 2s infinite linear;
+        }
+        @keyframes slideWave { 0% { transform: translateX(-10px); opacity: 0; } 50% { opacity: 1; } 100% { transform: translateX(10px); opacity: 0; } }
+
+        /* Animation 4: Logic Gate */
+        .gate-box { width: 300px; height: 150px; position: relative; display: flex; align-items: center; justify-content: center; }
+        .input-a { position: absolute; left: 50px; top: 40px; font-weight: bold; color: white; }
+        .input-b { position: absolute; left: 50px; top: 100px; font-weight: bold; color: white; }
+        .gate-shape {
+            width: 80px; height: 80px; background-color: #1e293b; border: 2px solid white; border-radius: 0 50px 50px 0;
+            display: flex; align-items: center; justify-content: center; z-index: 5;
+        }
+        .bulb {
+            width: 20px; height: 20px; border-radius: 50%; background-color: #334155; position: absolute; right: 50px;
+            transition: background-color 0.2s, box-shadow 0.2s; animation: logicCheck 4s infinite step-end;
+        }
+        .wire { position: absolute; background-color: white; height: 2px; }
+        .input-a::after { content: '0'; animation: inputA 4s infinite step-end; margin-left: 10px; color: #f59e0b; }
+        .input-b::after { content: '0'; animation: inputB 4s infinite step-end; margin-left: 10px; color: #f59e0b; }
+        @keyframes logicCheck { 0% { background-color: #334155; box-shadow: none; } 25% { background-color: #334155; box-shadow: none; } 50% { background-color: #334155; box-shadow: none; } 75% { background-color: #facc15; box-shadow: 0 0 15px #facc15; } }
+        @keyframes inputA { 0% {content:'0'} 25% {content:'0'} 50% {content:'1'} 75% {content:'1'} }
+        @keyframes inputB { 0% {content:'0'} 25% {content:'1'} 50% {content:'0'} 75% {content:'1'} }
+
+        /* Quiz Specifics */
+        .quiz-option {
+            background: #1e293b;
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 1rem 1.25rem;
+            border-radius: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .quiz-option:hover { background: #334155; }
+        .quiz-option.selected { background: rgba(20, 184, 166, 0.2); border-color: #14b8a6; }
+        .quiz-circle { width: 20px; height: 20px; border: 2px solid #64748b; border-radius: 50%; flex-shrink: 0; }
+        .quiz-option.selected .quiz-circle { border-color: #14b8a6; background: #14b8a6; }
+
+        /* Pie Chart */
+        .pie-chart {
+            width: 120px; height: 120px; border-radius: 50%;
+            margin: 15px 0;
+            background: conic-gradient(#22c55e 0deg, #ef4444 0deg);
+            position: relative;
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+        }
+        .pie-inner {
+            position: absolute; top: 15px; left: 15px;
+            width: 90px; height: 90px;
+            background: #1e293b; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; color: #fff;
+        }
+
+        /* Graph Container */
+        .graph-container {
+            height: 160px;
+            padding-top: 25px;
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+            padding-bottom: 5px;
+            border-bottom: 2px solid rgba(255,255,255,0.1);
+            margin-top: 20px;
+            overflow-x: auto;
+            width: 100%;
+            padding-right: 10px;
+        }
+        .graph-bar-group {
+            flex: 0 0 auto;
+            min-width: 45px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100%;
+            justify-content: flex-end;
+        }
+        .graph-bar {
+            width: 100%;
+            background: linear-gradient(to top, #0d9488, #14b8a6);
+            border-radius: 4px 4px 0 0;
+            transition: height 1s ease-out;
+            position: relative;
+            min-height: 4px;
+        }
+        .graph-label {
+            margin-top: 8px; font-size: 0.65rem; color: #94a3b8;
+            text-align: center; width: 100%; white-space: nowrap;
+            overflow: hidden; text-overflow: ellipsis;
+        }
+        .graph-value {
+            position: absolute; top: -18px; left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.65rem; color: #fff; font-weight: bold;
+        }
+        .bar-bg { background: rgba(255,255,255,0.05); height: 6px; border-radius: 99px; overflow: hidden; }
+        .bar-fill { height: 100%; background: #14b8a6; transition: width 1s ease; }
+    </style>
+</head>
+<body class="flex flex-col h-screen overflow-hidden">
+
+    <header class="h-16 border-b border-white/5 bg-[#020617]/90 backdrop-blur-md flex items-center justify-between px-6 z-[100] flex-shrink-0 relative">
+        <div class="flex items-center gap-4">
+            <a href="physics.html" class="w-10 h-10 rounded-full hover:bg-white/5 flex items-center justify-center text-slate-400 hover:text-white transition-all group cursor-pointer" title="Back to Chapters">
+                <svg class="w-5 h-5 group-hover:-translate-x-1 transition-transform pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+            </a>
+            <div>
+                <p class="text-[10px] uppercase tracking-widest text-teal-400 font-bold" id="header-subtitle">Now Watching</p>
+                <h1 id="header-title" class="text-sm md:text-base font-bold text-white truncate max-w-[200px] md:max-w-md">Semiconductor Electronics</h1>
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+            <button id="quiz-back-btn" onclick="exitQuiz()" class="hidden px-3 py-1.5 text-xs font-bold bg-white/10 hover:bg-white/20 rounded-lg text-white transition-colors border border-white/10">
+                Back to Lecture
+            </button>
+            <span class="text-xs text-slate-500 font-medium hidden md:block" id="save-status">Tracking Progress...</span>
+            <div class="flex items-center gap-2 bg-slate-800 px-3 py-1 rounded-full border border-white/10">
+                 <div class="w-2 h-2 rounded-full bg-orange-500 animate-pulse" id="live-indicator"></div>
+                 <span class="text-xs font-bold text-white" id="live-percent">0%</span>
+            </div>
+        </div>
+        <div id="visual-progress" class="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-teal-500 to-emerald-500 transition-all duration-700 ease-in-out shadow-[0_0_10px_rgba(20,184,166,0.5)]" style="width: 0%"></div>
+    </header>
+
+    <main class="flex-grow overflow-y-auto p-4 md:p-8 flex flex-col items-center relative">
+        
+        <div id="content-view" class="w-full max-w-4xl animate-fade-in pb-20">
+            
+            <div class="video-container mb-6">
+                <iframe id="main-player" src="https://www.youtube.com/embed/AyFc_dyj5oE?autoplay=0&rel=0&modestbranding=1" title="Video Player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+            </div>
+
+            <div class="flex flex-col md:flex-row items-center justify-between gap-4 p-6 bg-[#0f172a] border border-white/5 rounded-2xl shadow-lg mb-10">
+                <div class="w-full md:w-auto">
+                    <h2 id="video-title" class="text-2xl font-bold text-white mb-1">Semiconductor Electronics</h2>
+                    <p class="text-slate-400 text-sm">Physics • Class 12 • Chapter 14</p>
+                </div>
+                <div class="flex items-center gap-3 w-full md:w-auto">
+                    <button id="mark-done-btn" onclick="toggleStatus()" class="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-slate-800 border border-slate-600 transition-all text-sm font-semibold text-slate-200 group cursor-not-allowed opacity-50">
+                        <div class="w-5 h-5 rounded-full border-2 border-slate-400 group-hover:border-white flex items-center justify-center">
+                            <svg class="w-3 h-3 text-white opacity-0 transition-opacity check-icon" fill="currentColor" viewBox="0 0 20 20"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"></path></svg>
+                        </div>
+                        <span class="btn-text" id="mark-btn-text">Locked (Studying...)</span>
+                    </button>
+                    
+                    <button onclick="startQuiz()" class="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white font-bold shadow-lg shadow-teal-500/20 hover:shadow-teal-500/40 hover:-translate-y-0.5 transition-all group">
+                        <span>Take Test</span>
+                        <svg class="w-5 h-5 group-hover:rotate-6 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                    </button>
+                </div>
+            </div>
+
+            <div id="detailed-notes" class="notes-content">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="h-8 w-1 bg-teal-500 rounded-full"></div>
+                    <h2 class="!m-0 !border-0 !p-0 text-3xl text-white"> Notes</h2>
+                </div>
+                
+                <p class="text-slate-400 italic mb-8">Comprehensive notes based on NCERT</p>
+
+                <section id="intro">
+                    <h2>1. Introduction</h2>
+                    <p>Semiconductors are materials whose conductivity lies between conductors (metals) and insulators. They are the foundation of modern electronics. Unlike vacuum tubes, semiconductor devices (diodes, transistors) are small, consume low power, operate at low voltage, and have a long life.</p>
+                    
+                    <h3>Classification based on Conductivity (\(\sigma\))</h3>
+                    <ul>
+                        <li><strong>Metals:</strong> Very low resistivity (\(\rho \sim 10^{-2} - 10^{-8} \, \Omega \text{m}\)).</li>
+                        <li><strong>Semiconductors:</strong> Intermediate resistivity (\(\rho \sim 10^{-5} - 10^{6} \, \Omega \text{m}\)).</li>
+                        <li><strong>Insulators:</strong> High resistivity (\(\rho \sim 10^{11} - 10^{19} \, \Omega \text{m}\)).</li>
+                    </ul>
+                </section>
+
+                <section id="bands">
+                    <h2>2. Energy Bands in Solids</h2>
+                    <p>In a solid, electrons are arranged in energy bands separated by an Energy Gap (\(E_g\)).</p>
+                    <ul>
+                        <li><strong>Valence Band (VB):</strong> Contains valence electrons.</li>
+                        <li><strong>Conduction Band (CB):</strong> Contains free electrons responsible for conduction.</li>
+                        <li><strong>Energy Gap (\(E_g\)):</strong> The energy difference between the top of VB and bottom of CB.</li>
+                    </ul>
+
+                    <div class="diagram-container">
+                        <div class="band-box">
+                            <div class="conduction-band">Conduction Band (Empty at 0K)</div>
+                            <div class="gap-arrow"></div>
+                            <div class="electron-jump"></div> <div class="hole-remain"></div> <div class="valence-band">Valence Band (Filled)</div>
+                        </div>
+                        <div class="caption">
+                             Thermal excitation causes an electron to jump from VB to CB, leaving behind a hole (vacancy).
+                        </div>
+                    </div>
+
+                    <h3>Classification based on Band Gap (\(E_g\))</h3>
+                    <ul>
+                        <li><strong>Metals:</strong> \(E_g \approx 0\). CB and VB overlap. Electrons are free to move.</li>
+                        <li><strong>Semiconductors:</strong> \(E_g < 3\) eV. Small gap (e.g., Si = 1.1 eV, Ge = 0.7 eV). Thermal energy can excite electrons.</li>
+                        <li><strong>Insulators:</strong> \(E_g > 3\) eV. Large gap. No conduction.</li>
+                    </ul>
+                </section>
+
+                <section id="intrinsic">
+                    <h2>3. Intrinsic Semiconductor</h2>
+                    <p>Pure semiconductors (like pure Si or Ge) are called Intrinsic Semiconductors.</p>
+                    <ul>
+                        <li>At \(T > 0\)K, thermal energy generates electron-hole pairs.</li>
+                        <li>Number of free electrons (\(n_e\)) = Number of holes (\(n_h\)) = Intrinsic carrier concentration (\(n_i\)).</li>
+                        <li>Current is carried by both electrons and holes: \(I = I_e + I_h\).</li>
+                    </ul>
+                </section>
+
+                <section id="extrinsic">
+                    <h2>4. Extrinsic Semiconductor</h2>
+                    <p>Conductivity of pure semiconductors is low. Adding impurities (Doping) increases it significantly. These are Extrinsic Semiconductors.</p>
+                    
+                    <h3>n-type Semiconductor</h3>
+                    <p>Doped with <strong>Pentavalent</strong> impurity (Valency 5, e.g., As, P, Sb).
+                        <br> - Donates extra electrons.
+                        <br> - Majority carriers: Electrons (\(n_e \gg n_h\)).
+                    </p>
+
+                    <h3>p-type Semiconductor</h3>
+                    <p>Doped with <strong>Trivalent</strong> impurity (Valency 3, e.g., B, Al, In).
+                        <br> - Creates vacancies (holes).
+                        <br> - Majority carriers: Holes (\(n_h \gg n_e\)).
+                    </p>
+                </section>
+
+                <section id="pn-junction">
+                    <h2>5. P-N Junction Formation</h2>
+                    <p>When p-type and n-type semiconductors are joined, diffusion of carriers occurs.</p>
+                    <ul>
+                        <li>Holes diffuse from p to n; Electrons from n to p.</li>
+                        <li>This creates a <strong>Depletion Region</strong> devoid of free charges but containing immobile ions.</li>
+                        <li>An electric field develops, opposing further diffusion.</li>
+                    </ul>
+
+                    <div class="diagram-container">
+                        <div class="pn-box">
+                            <div class="p-region"><div class="hole-particle" style="top:30px; left:10px;"></div></div>
+                            <div class="depletion-zone">Depletion Region</div>
+                            <div class="n-region"><div class="elec-particle" style="top:80px; right:10px;"></div></div>
+                        </div>
+                        <div class="caption">
+                             Diffusion of carriers creates a depletion region where recombination occurs.
+                        </div>
+                    </div>
+                </section>
+
+                <section id="diode">
+                    <h2>6. Semiconductor Diode & Rectifier</h2>
+                    <p>A p-n junction with metallic contacts is a Diode.</p>
+                    <ul>
+                        <li><strong>Forward Bias:</strong> p to (+), n to (-). Depletion width decreases. Current flows easily.</li>
+                        <li><strong>Reverse Bias:</strong> p to (-), n to (+). Depletion width increases. Current is negligible (only drift current).</li>
+                    </ul>
+
+                    <h3>Rectifier</h3>
+                    <p>Converts AC to DC. Diodes allow current only in one direction.</p>
+                    <div class="diagram-container">
+                        <div class="rectifier-box">
+                            <div class="input-wave"></div>
+                            <div class="rect-block">Rectifier</div>
+                            <div class="output-wave"></div>
+                        </div>
+                        <div class="caption">
+                            AC Input (Blue) is converted to pulsating DC Output (Yellow) by the rectifier.
+                        </div>
+                    </div>
+
+                    <ul>
+                        <li><strong>Half-Wave Rectifier:</strong> Uses 1 diode. Conducts in +ve half cycle only.</li>
+                        <li><strong>Full-Wave Rectifier:</strong> Uses 2 diodes. Conducts in both cycles.</li>
+                    </ul>
+                </section>
+
+                <section id="logic">
+                    <h2>7. Logic Gates</h2>
+                    <p>Digital circuits use binary logic (0 and 1). Logic gates are building blocks that perform logical operations.</p>
+                    
+                    <table class="w-full text-sm text-left border-collapse border border-white/10 rounded-lg overflow-hidden mt-4">
+                        <thead class="bg-white/10 text-teal-300">
+                            <tr>
+                                <th class="p-3">Gate</th>
+                                <th class="p-3">Logic</th>
+                                <th class="p-3">Output (\(Y\))</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-white/10">
+                            <tr><td class="p-3">OR</td> <td class="p-3">High if any input is high</td> <td class="p-3">\(A + B\)</td></tr>
+                            <tr><td class="p-3">AND</td> <td class="p-3">High if ALL inputs high</td> <td class="p-3">\(A \cdot B\)</td></tr>
+                            <tr><td class="p-3">NOT</td> <td class="p-3">Inverts input</td> <td class="p-3">\(\bar{A}\)</td></tr>
+                            <tr><td class="p-3">NAND</td> <td class="p-3">NOT-AND</td> <td class="p-3">\(\overline{A \cdot B}\)</td></tr>
+                            <tr><td class="p-3">NOR</td> <td class="p-3">NOT-OR</td> <td class="p-3">\(\overline{A + B}\)</td></tr>
+                        </tbody>
+                    </table>
+
+                    <div class="diagram-container">
+                        <div class="gate-box">
+                            <div class="input-a">A=</div>
+                            <div class="input-b">B=</div>
+                            <div class="gate-shape" style="left:80px;">AND</div>
+                            <div class="wire" style="width:50px; right:70px;"></div>
+                            <div class="bulb"></div>
+                        </div>
+                        <div class="caption">
+                            AND Gate Truth Table Simulation. Output (Bulb) turns ON (Yellow) only when both inputs A and B are 1.
+                        </div>
+                    </div>
+                    <p><strong>NAND and NOR</strong> are called Universal Gates because any logic function can be implemented using only them.</p>
+                </section>
+                <div class="mt-10 pt-6 border-t border-white/10 text-center text-slate-500 text-sm">
+                    BRO YOU CAN AND YOU WILL ⚡
+                </div>
+            </div>
+        </div>
+
+        <div id="quiz-view" class="w-full max-w-4xl flex-col items-center animate-fade-in hidden pb-20">
+            <div class="w-full bg-[#1e293b] border border-white/5 rounded-2xl p-4 mb-6 flex justify-between items-center shadow-lg">
+                <h2 class="text-xl font-bold text-white">Physics Master Quiz</h2>
+                <div class="px-3 py-1 bg-black/30 rounded-lg border border-white/10 font-mono text-lg text-white" id="timer">15:00</div>
+            </div>
+
+            <div id="screen-start" class="w-full bg-[#0f172a] border border-white/5 rounded-2xl p-8 text-center shadow-lg flex flex-col items-center">
+                <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-teal-600 to-emerald-600 flex items-center justify-center mb-6 shadow-lg shadow-teal-500/20">
+                    <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </div>
+                <h2 class="text-3xl font-bold text-white mb-2">Practice Quiz</h2>
+                <p class="text-slate-400 mb-8">15 Questions • 15 Minutes • Board Level MCQs</p>
+                <button onclick="quizApp.start()" class="px-8 py-3 rounded-xl bg-white text-black font-bold hover:scale-105 transition-transform">Start Now</button>
+            </div>
+
+            <div id="screen-quiz" class="w-full hidden flex-col">
+                <div class="mb-6">
+                    <div class="text-teal-400 font-bold text-sm tracking-wider mb-2">QUESTION <span id="q-idx">1</span>/15</div>
+                    <div id="q-text" class="text-xl md:text-2xl font-bold text-white leading-relaxed">Loading...</div>
+                </div>
+                <div id="options-box" class="space-y-3 mb-8 w-full"></div>
+                <div class="flex justify-end">
+                    <button id="btn-next" onclick="quizApp.next()" disabled class="px-6 py-3 rounded-xl bg-teal-600 text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-teal-500 transition-colors">Next Question</button>
+                </div>
+            </div>
+
+            <div id="screen-result" class="w-full hidden flex-col">
+                <div class="bg-[#1e293b] border border-white/5 rounded-2xl p-6 mb-6 flex flex-col md:flex-row items-center justify-between gap-6 shadow-lg">
+                    <div class="text-center md:text-left">
+                        <p class="text-slate-400 text-xs uppercase tracking-widest font-bold mb-1">Total Score</p>
+                        <div class="text-5xl font-black text-white"><span id="score">0</span><span class="text-2xl text-slate-500">/15</span></div>
+                        <div id="score-text" class="text-green-400 font-bold mt-2">0% Accuracy</div>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <div class="pie-chart" id="chart-pie">
+                            <div class="pie-inner" id="pie-text">0%</div>
+                        </div>
+                    </div>
+                    <div class="flex gap-3">
+                        <button onclick="quizApp.start()" class="px-5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition-colors border border-white/10">Retake Quiz</button>
+                        <button onclick="exitQuiz()" class="px-5 py-2 rounded-lg bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold transition-colors">Finish & Save</button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <div class="bg-[#1e293b] border border-white/5 rounded-2xl p-6 shadow-lg">
+                        <div class="text-slate-400 text-xs uppercase tracking-widest font-bold mb-4 flex items-center gap-2">
+                            <svg class="w-4 h-4 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z"></path></svg>
+                            Topic Wise Performance
+                        </div>
+                        <div id="chart-bars" class="space-y-4"></div>
+                    </div>
+
+                    <div class="bg-[#1e293b] border border-white/5 rounded-2xl p-6 shadow-lg">
+                        <div class="text-slate-400 text-xs uppercase tracking-widest font-bold mb-4 flex items-center gap-2">
+                            <svg class="w-4 h-4 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path></svg>
+                            Analysis Graph
+                        </div>
+                        <div id="topic-graph" class="graph-container">
+                        </div>
+                    </div>
+                </div>
+
+                <h3 class="text-xl font-bold text-white mb-4 pl-1 border-l-4 border-teal-500">Detailed Review</h3>
+                <div id="review-box" class="space-y-4 w-full"></div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // --- 1. SMART PROGRESS TRACKING LOGIC (UPDATED FOR CHAPTER 14) ---
+        const KEY_PROGRESS = 'physics_chapter_14_progress'; 
+        const KEY_STATE = 'physics_chapter_14_state';       
+
+        const LOCK_TIME = 2800; // 2 HOURS
+        const INTERVAL_DURATION = 1100; // 30 Minutes
+
+        const DEFAULT_STATE = {
+            manual: false, // Worth 50%
+            test: false,   // Worth 20%
+            timeIntervals: 0, // Max 4, worth 7.5% each (Total 30%)
+            timeSpentSeconds: 0 
+        };
+        
+        let chapterState = { ...DEFAULT_STATE };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadState();
+            startTimer();
+            updateUI();
+            saveAndCalculate(); 
+        });
+
+        function loadState() {
+            const savedState = localStorage.getItem(KEY_STATE);
+            if (savedState) {
+                try {
+                    const parsed = JSON.parse(savedState);
+                    chapterState = { ...DEFAULT_STATE, ...parsed };
+                    if(typeof chapterState.timeIntervals !== 'number') chapterState.timeIntervals = 0;
+                    if(typeof chapterState.timeSpentSeconds !== 'number') chapterState.timeSpentSeconds = 0;
+                } catch(e) {
+                    console.error("State load error, resetting", e);
+                    chapterState = { ...DEFAULT_STATE };
+                }
+            }
+        }
+
+        function saveAndCalculate() {
+            localStorage.setItem(KEY_STATE, JSON.stringify(chapterState));
+            
+            // MATH: 50% + 20% + (4 * 7.5%) = 100%
+            let percent = 0;
+            if (chapterState.manual) percent += 50;
+            if (chapterState.test) percent += 20;
+            percent += (chapterState.timeIntervals * 7.5);
+
+            if (percent > 100) percent = 100; 
+            
+            const displayPercent = Math.floor(percent);
+
+            localStorage.setItem(KEY_PROGRESS, displayPercent.toString());
+
+            const indicator = document.getElementById('live-indicator');
+            const txt = document.getElementById('live-percent');
+            const bar = document.getElementById('visual-progress');
+            
+            if(txt) txt.innerText = `${displayPercent}%`;
+            if(bar) bar.style.width = `${displayPercent}%`;
+            
+            if (indicator) {
+                if (displayPercent === 100) {
+                    indicator.classList.remove('bg-orange-500', 'animate-pulse');
+                    indicator.classList.add('bg-green-500');
+                } else {
+                    indicator.classList.add('bg-orange-500', 'animate-pulse');
+                    indicator.classList.remove('bg-green-500');
+                }
+            }
+        }
+
+        function startTimer() {
+            setInterval(() => {
+                chapterState.timeSpentSeconds++;
+                
+                // 1. INTERVAL CHECK
+                let currentIntervals = Math.floor(chapterState.timeSpentSeconds / INTERVAL_DURATION);
+                if (currentIntervals > 4) currentIntervals = 4;
+
+                if (currentIntervals > chapterState.timeIntervals) {
+                    chapterState.timeIntervals = currentIntervals;
+                    saveAndCalculate();
+                    const status = document.getElementById('save-status');
+                    if(status) {
+                        status.innerText = `Progress Added (+7.5%)`;
+                        setTimeout(() => status.innerText = "Tracking Progress...", 3000);
+                    }
+                }
+
+                // 2. UNLOCK CHECK
+                const isLockedUI = document.getElementById('mark-btn-text').innerText.includes('Locked');
+                if (chapterState.timeSpentSeconds >= LOCK_TIME && isLockedUI) {
+                    updateUI(); 
+                    const status = document.getElementById('save-status');
+                    if(status) status.innerText = "Chapter Unlocked!";
+                }
+
+                if (chapterState.timeSpentSeconds % 10 === 0) {
+                    localStorage.setItem(KEY_STATE, JSON.stringify(chapterState));
+                }
+            }, 1000);
+        }
+
+        function toggleStatus() {
+            if (chapterState.timeSpentSeconds < LOCK_TIME && !chapterState.manual) {
+                alert("You must watch this lecture for at least 2 hours before marking it as complete.");
+                return;
+            }
+            chapterState.manual = !chapterState.manual; 
+            updateUI(); 
+            saveAndCalculate(); 
+        }
+
+        function updateUI() {
+            const btn = document.getElementById('mark-done-btn');
+            if(!btn) return;
+            
+            const icon = btn.querySelector('.check-icon');
+            const text = document.getElementById('mark-btn-text');
+            const circle = btn.querySelector('div');
+            const isLocked = chapterState.timeSpentSeconds < LOCK_TIME && !chapterState.manual;
+
+            if (chapterState.manual) {
+                btn.classList.remove('bg-slate-800', 'opacity-50', 'cursor-not-allowed');
+                btn.classList.add('bg-green-600', 'hover:bg-green-500', 'border-green-500', 'text-white');
+                circle.classList.remove('border-slate-400');
+                circle.classList.add('border-white', 'bg-white/20');
+                icon.classList.remove('opacity-0');
+                text.innerText = "Completed";
+            } else if (isLocked) {
+                btn.classList.add('bg-slate-800', 'opacity-50', 'cursor-not-allowed');
+                btn.classList.remove('bg-green-600', 'hover:bg-green-500', 'border-green-500', 'text-white');
+                circle.classList.add('border-slate-400');
+                circle.classList.remove('border-white', 'bg-white/20');
+                icon.classList.add('opacity-0');
+                text.innerText = "Locked (Studying...)";
+            } else {
+                btn.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-green-600');
+                btn.classList.add('bg-slate-800', 'hover:bg-slate-700');
+                circle.classList.add('border-slate-400');
+                icon.classList.add('opacity-0');
+                text.innerText = "Mark Complete";
+            }
+        }
+
+        function finishQuizInternal() {
+            if (!chapterState.test) {
+                chapterState.test = true;
+                saveAndCalculate();
+            }
+        }
+
+        const contentView = document.getElementById('content-view');
+        const quizView = document.getElementById('quiz-view');
+        const headerSub = document.getElementById('header-subtitle');
+        const quizBackBtn = document.getElementById('quiz-back-btn');
+        const saveStatus = document.getElementById('save-status');
+
+        function startQuiz() {
+            contentView.classList.add('hidden');
+            quizView.classList.remove('hidden');
+            quizView.classList.add('flex');
+            headerSub.innerText = "Quiz Mode";
+            quizBackBtn.classList.remove('hidden');
+            saveStatus.classList.add('hidden');
+            const iframe = document.getElementById('main-player');
+            const src = iframe.src;
+            iframe.src = ''; 
+            iframe.setAttribute('data-src', src); 
+        }
+
+        function exitQuiz() {
+            quizView.classList.add('hidden');
+            quizView.classList.remove('flex');
+            contentView.classList.remove('hidden');
+            headerSub.innerText = "Now Watching";
+            quizBackBtn.classList.add('hidden');
+            saveStatus.classList.remove('hidden');
+            const iframe = document.getElementById('main-player');
+            const savedSrc = iframe.getAttribute('data-src');
+            if(savedSrc) iframe.src = savedSrc;
+        }
+
+        // --- QUESTION DATA (From TEST.HTML - Chapter 14) ---
+        const questions = [
+            {
+                id: 1,
+                text: "At absolute zero temperature (0 K), an intrinsic semiconductor behaves as a/an:",
+                options: ["Superconductor", "Insulator", "Conductor", "Semiconductor with high conductivity"],
+                correct: 1,
+                topic: "Energy Bands",
+                explanation: "At 0 K, the valence band is completely filled and the conduction band is completely empty, making it a perfect insulator."
+            },
+            {
+                id: 2,
+                text: "In an n-type semiconductor, the majority charge carriers are:",
+                options: ["Holes", "Electrons", "Positive Ions", "Neutrons"],
+                correct: 1,
+                topic: "Doping",
+                explanation: "n-type semiconductors are doped with pentavalent impurities, providing excess free electrons as majority carriers."
+            },
+            {
+                id: 3,
+                text: "The depletion layer in a p-n junction diode consists of:",
+                options: ["Electrons only", "Holes only", "Immobile ions", "Mobile charge carriers"],
+                correct: 2,
+                topic: "p-n Junction",
+                explanation: "The depletion region is devoid of mobile charge carriers and consists of immobile ionised donors and acceptors."
+            },
+            {
+                id: 4,
+                text: "When a p-n junction is forward biased, the width of the depletion layer:",
+                options: ["Increases", "Decreases", "Remains same", "Becomes infinite"],
+                correct: 1,
+                topic: "Biasing",
+                explanation: "In forward bias, the applied voltage opposes the barrier potential, pushing carriers towards the junction and reducing depletion width."
+            },
+            {
+                id: 5,
+                text: "A Zener diode is primarily used as a:",
+                options: ["Rectifier", "Amplifier", "Voltage Regulator", "Oscillator"],
+                correct: 2,
+                topic: "Zener Diode",
+                explanation: "Zener diodes are designed to operate in the reverse breakdown region to maintain a constant voltage, acting as voltage regulators."
+            },
+            {
+                id: 6,
+                text: "In a full-wave rectifier, if the input frequency is 50 Hz, the output frequency of the ripple is:",
+                options: ["50 Hz", "100 Hz", "25 Hz", "Zero"],
+                correct: 1,
+                topic: "Rectifier",
+                explanation: "A full-wave rectifier converts both halves of the AC cycle, so the output pulses occur at twice the input frequency (2ν)."
+            },
+            {
+                id: 7,
+                text: "Which logic gate yields a 'High' (1) output only if ALL its inputs are 'High' (1)?",
+                options: ["OR", "AND", "NOT", "NOR"],
+                correct: 1,
+                topic: "Logic Gates",
+                explanation: "The AND gate gives an output of 1 only when both inputs A and B are 1."
+            },
+            {
+                id: 8,
+                text: "The energy band gap (Eg) for Silicon at room temperature is approximately:",
+                options: ["0.7 eV", "1.1 eV", "5.4 eV", "3.0 eV"],
+                correct: 1,
+                topic: "Energy Bands",
+                explanation: "The energy band gap for Silicon is approximately 1.1 eV, while for Germanium it is ~0.7 eV."
+            },
+            {
+                id: 9,
+                text: "To obtain a p-type semiconductor, Silicon should be doped with a valency:",
+                options: ["+5", "+4", "+3", "+2"],
+                correct: 2,
+                topic: "Doping",
+                explanation: "Trivalent impurities (valency 3 like Boron, Aluminum) create holes, resulting in a p-type semiconductor."
+            },
+            {
+                id: 10,
+                text: "Which of the following is a 'Universal Gate'?",
+                options: ["AND", "OR", "NOT", "NAND"],
+                correct: 3,
+                topic: "Logic Gates",
+                explanation: "NAND and NOR gates are called Universal Gates because any other logic gate can be realized using them alone."
+            },
+            {
+                id: 11,
+                text: "In a photodiode, the value of photocurrent is proportional to:",
+                options: ["Voltage applied", "Intensity of incident light", "Temperature", "Resistance"],
+                correct: 1,
+                topic: "Photodiode",
+                explanation: "The magnitude of photocurrent depends on the number of electron-hole pairs generated, which is proportional to light intensity."
+            },
+            {
+                id: 12,
+                text: "An LED is typically biased in:",
+                options: ["Forward Bias", "Reverse Bias", "No Bias", "Breakdown Region"],
+                correct: 0,
+                topic: "LED",
+                explanation: "Light Emitting Diodes (LEDs) emit light via spontaneous radiation when forward biased."
+            },
+            {
+                id: 13,
+                text: "The Boolean expression Y = A + B represents which gate?",
+                options: ["AND", "OR", "NAND", "NOR"],
+                correct: 1,
+                topic: "Logic Gates",
+                explanation: "The expression A + B corresponds to the logical OR operation."
+            },
+            {
+                id: 14,
+                text: "In a semiconductor, the relation between electron concentration (ne), hole concentration (nh) and intrinsic concentration (ni) is:",
+                options: ["ne + nh = ni", "ne - nh = ni", "ne * nh = ni²", "ne / nh = ni"],
+                correct: 2,
+                topic: "Mass Action Law",
+                explanation: "The mass action law states that at thermal equilibrium, ne * nh = ni²."
+            },
+            {
+                id: 15,
+                text: "Carbon, Silicon, and Germanium have the same lattice structure. Why is Carbon an insulator?",
+                options: ["Its energy gap is very small", "Its energy gap is very large (~5.4 eV)", "It has no valence electrons", "It is black in color"],
+                correct: 1,
+                topic: "Material Properties",
+                explanation: "Carbon (Diamond) has a large energy band gap (~5.4 eV), making it an insulator, unlike Si and Ge which have smaller gaps."
+            }
+        ];
+
+        const quizApp = {
+            idx: 0, answers: Array(questions.length).fill(null), timer: 900, interval: null,
+
+            start: function() {
+                this.idx = 0; this.answers.fill(null); this.timer = 900;
+                document.getElementById('screen-start').classList.add('hidden');
+                document.getElementById('screen-result').classList.add('hidden');
+                document.getElementById('screen-result').classList.remove('flex');
+                const quizScreen = document.getElementById('screen-quiz');
+                quizScreen.classList.remove('hidden');
+                quizScreen.classList.add('flex');
+                this.renderQ();
+                this.startTimer();
+            },
+
+            startTimer: function() {
+                clearInterval(this.interval);
+                this.interval = setInterval(() => {
+                    if(this.timer <= 0) { this.finish(); return; }
+                    this.timer--;
+                    const m = Math.floor(this.timer / 60);
+                    const s = this.timer % 60;
+                    document.getElementById('timer').innerText = `${m}:${s < 10 ? '0'+s : s}`;
+                }, 1000);
+            },
+
+            renderQ: function() {
+                const q = questions[this.idx];
+                document.getElementById('q-idx').innerText = this.idx + 1;
+                document.getElementById('q-text').innerText = q.text;
+                const box = document.getElementById('options-box');
+                box.innerHTML = '';
+                const nextBtn = document.getElementById('btn-next');
+                nextBtn.disabled = true;
+                nextBtn.innerText = (this.idx === questions.length - 1) ? "Submit Quiz" : "Next Question";
+
+                q.options.forEach((opt, i) => {
+                    const div = document.createElement('div');
+                    div.className = 'quiz-option';
+                    div.innerHTML = `<div class="quiz-circle"></div><span class="text-slate-300 font-medium">${opt}</span>`;
+                    div.onclick = () => this.select(i, div);
+                    box.appendChild(div);
+                });
+            },
+
+            select: function(optIdx, el) {
+                this.answers[this.idx] = optIdx;
+                document.querySelectorAll('.quiz-option').forEach(x => x.classList.remove('selected'));
+                el.classList.add('selected');
+                document.getElementById('btn-next').disabled = false;
+            },
+
+            next: function() {
+                if(this.idx < questions.length - 1) { this.idx++; this.renderQ(); } 
+                else { this.finish(); }
+            },
+
+            finish: function() {
+                clearInterval(this.interval);
+                let correctCount = 0;
+                let topicStats = {};
+
+                questions.forEach((q, i) => {
+                    const isCorrect = (this.answers[i] === q.correct);
+                    if(isCorrect) correctCount++;
+                    if(!topicStats[q.topic]) topicStats[q.topic] = { total: 0, right: 0 };
+                    topicStats[q.topic].total++;
+                    if(isCorrect) topicStats[q.topic].right++;
+                });
+
+                document.getElementById('screen-quiz').classList.add('hidden');
+                document.getElementById('screen-quiz').classList.remove('flex');
+                const resultScreen = document.getElementById('screen-result');
+                resultScreen.classList.remove('hidden');
+                resultScreen.classList.add('flex');
+
+                document.getElementById('score').innerText = correctCount;
+                const pct = Math.round((correctCount / questions.length) * 100);
+                document.getElementById('score-text').innerText = `${pct}% Accuracy`;
+                const deg = (correctCount / questions.length) * 360;
+                document.getElementById('chart-pie').style.background = `conic-gradient(#22c55e 0deg ${deg}deg, #ef4444 ${deg}deg 360deg)`;
+                document.getElementById('pie-text').innerText = `${pct}%`;
+
+                const barBox = document.getElementById('chart-bars');
+                const graphBox = document.getElementById('topic-graph');
+                barBox.innerHTML = '';
+                graphBox.innerHTML = '';
+
+                for (const [topic, data] of Object.entries(topicStats)) {
+                    const topicPct = Math.round((data.right / data.total) * 100);
+                    barBox.innerHTML += `
+                        <div class="text-sm">
+                            <div class="flex justify-between text-slate-400 mb-1">
+                                <span class="font-medium text-white">${topic}</span>
+                                <span>${data.right}/${data.total}</span>
+                            </div>
+                            <div class="bar-bg"><div class="bar-fill" style="width: ${topicPct}%"></div></div>
+                        </div>`;
+                    graphBox.innerHTML += `
+                        <div class="graph-bar-group">
+                            <div class="graph-bar" style="height: ${topicPct}%;">
+                                <div class="graph-value">${topicPct}%</div>
+                            </div>
+                            <div class="graph-label">${topic}</div>
+                        </div>`;
+                }
+
+                finishQuizInternal(); 
+
+                const reviewBox = document.getElementById('review-box');
+                reviewBox.innerHTML = '';
+                questions.forEach((q, i) => {
+                    const isRight = (this.answers[i] === q.correct);
+                    reviewBox.innerHTML += `
+                        <div class="p-4 rounded-xl border border-white/5 bg-[#1e293b] ${isRight ? 'border-l-4 border-l-green-500' : 'border-l-4 border-l-red-500'}">
+                            <p class="font-bold text-white mb-2 text-base">Q${i+1}: ${q.text}</p>
+                            <div class="text-sm mb-2"><span class="${isRight ? 'text-green-400' : 'text-red-400'}">Answer: ${this.answers[i]!==null?q.options[this.answers[i]]:'Skipped'}</span></div>
+                            <div class="text-xs text-slate-400">${q.explanation}</div>
+                        </div>`;
+                });
+            }
+        };
+    </script>
+</body>
+</html>

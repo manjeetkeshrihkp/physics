@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lecture Player | JEE Matrix</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=Merriweather:ital,wght@0,300;0,400;0,700;1,400&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { 
+                        sans: ['Inter', 'sans-serif'],
+                        serif: ['Merriweather', 'serif'],
+                    },
+                    colors: { background: '#020617' },
+                    animation: { 'fade-in': 'fadeIn 0.5s ease-out forwards' },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0', transform: 'translateY(10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #020617;
+            color: #f8fafc;
+            background-image: linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            min-height: 100vh;
+        }
+
+        /* Video Container (16:9) */
+        .video-container {
+            position: relative;
+            padding-bottom: 56.25%;
+            height: 0;
+            overflow: hidden;
+            background: #000;
+            border-radius: 16px;
+            box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .video-container iframe {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; } /* Added height for horizontal scroll */
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        /* Notes Specific Styles */
+        .notes-content p, .notes-content li {
+            font-family: 'Merriweather', serif;
+            color: #cbd5e1; /* slate-300 */
+            line-height: 1.8;
+            margin-bottom: 1rem;
+        }
+        .notes-content h2 {
+            font-family: 'Inter', sans-serif;
+            color: #60a5fa; /* blue-400 */
+            font-weight: 700;
+            font-size: 1.5rem;
+            margin-top: 3rem;
+            margin-bottom: 1rem;
+            border-left: 4px solid #3b82f6;
+            padding-left: 1rem;
+        }
+        .notes-content h3 {
+            font-family: 'Inter', sans-serif;
+            color: #f8fafc; /* white */
+            font-weight: 600;
+            font-size: 1.25rem;
+            margin-top: 2rem;
+            margin-bottom: 0.75rem;
+        }
+        .notes-content strong { color: #fff; }
+        .notes-content ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1.5rem; }
+        .notes-content ol { list-style-type: decimal; padding-left: 1.5rem; margin-bottom: 1.5rem; }
+        
+        .formula-box {
+            background-color: #1e293b; /* slate-800 */
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin: 1.5rem 0;
+            text-align: center;
+            font-family: 'Inter', sans-serif;
+            overflow-x: auto;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+
+        .note-highlight {
+            background-color: rgba(59, 130, 246, 0.1); /* blue-500/10 */
+            border-left: 4px solid #3b82f6; /* blue-500 */
+            padding: 1rem 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 0 8px 8px 0;
+            font-style: italic;
+        }
+
+        /* --- DIAGRAM ANIMATIONS --- */
+        .diagram-container {
+            background-color: #0f172a;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 2rem 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+        .caption { margin-top: 10px; font-size: 0.85rem; color: #94a3b8; font-family: 'Inter', sans-serif; }
+
+        .charge-diagram { position: relative; width: 200px; height: 200px; display: flex; justify-content: center; align-items: center; }
+        .charge-core { width: 30px; height: 30px; background-color: #ef4444; border-radius: 50%; z-index: 2; box-shadow: 0 0 15px #ef4444; display: flex; justify-content: center; align-items: center; font-weight: bold; color: white; font-family: sans-serif; }
+        .equi-ring { position: absolute; border: 2px dashed rgba(96, 165, 250, 0.5); border-radius: 50%; animation: ripple 3s infinite linear; }
+        .ring-1 { width: 60px; height: 60px; animation-delay: 0s; }
+        .ring-2 { width: 100px; height: 100px; animation-delay: 1s; }
+        .ring-3 { width: 140px; height: 140px; animation-delay: 2s; }
+        @keyframes ripple {
+            0% { transform: scale(0.8); opacity: 1; border-color: rgba(96, 165, 250, 0.8); }
+            100% { transform: scale(1.2); opacity: 0; border-color: rgba(96, 165, 250, 0); }
+        }
+
+        .capacitor-diagram { width: 300px; height: 150px; position: relative; display: flex; flex-direction: column; justify-content: space-between; padding: 10px 0; }
+        .plate { height: 15px; width: 100%; background: linear-gradient(90deg, #374151, #4b5563); border-radius: 4px; display: flex; justify-content: space-around; align-items: center; color: white; font-size: 10px; font-weight: bold; font-family: sans-serif; }
+        .field-lines-container { flex-grow: 1; position: relative; overflow: hidden; }
+        .field-arrow { position: absolute; width: 2px; height: 100%; background-color: #facc15; opacity: 0.7; animation: flowDown 1.5s infinite linear; }
+        .field-arrow::after { content: '▼'; position: absolute; bottom: 0; left: -4px; color: #facc15; font-size: 10px; }
+        @keyframes flowDown { 0% { transform: translateY(-100%); opacity: 0; } 50% { opacity: 1; } 100% { transform: translateY(100%); opacity: 0; } }
+
+        .dipole-scene { width: 250px; height: 200px; position: relative; background: repeating-linear-gradient(90deg, transparent, transparent 49px, rgba(255,255,255,0.05) 50px); }
+        .dipole-stick { width: 140px; height: 4px; background-color: white; position: absolute; top: 50%; left: 50%; margin-left: -70px; margin-top: -2px; animation: oscilate 4s infinite ease-in-out; transform-origin: center; }
+        .charge { width: 24px; height: 24px; border-radius: 50%; position: absolute; top: -10px; display: flex; justify-content: center; align-items: center; font-size: 14px; font-weight: bold; color: black; box-shadow: 0 0 10px rgba(0,0,0,0.5); font-family: sans-serif; }
+        .pos { right: -12px; background-color: #ef4444; }
+        .neg { left: -12px; background-color: #3b82f6; }
+        @keyframes oscilate { 0% { transform: rotate(45deg); } 50% { transform: rotate(-45deg); } 100% { transform: rotate(45deg); } }
+
+        /* Quiz Specifics */
+        .quiz-option {
+            background: #1e293b;
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 1rem 1.25rem;
+            border-radius: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .quiz-option:hover { background: #334155; }
+        .quiz-option.selected { background: rgba(96, 165, 250, 0.2); border-color: #60a5fa; }
+        .quiz-circle { width: 20px; height: 20px; border: 2px solid #64748b; border-radius: 50%; flex-shrink: 0; }
+        .quiz-option.selected .quiz-circle { border-color: #60a5fa; background: #60a5fa; }
+
+        /* Pie Chart */
+        .pie-chart {
+            width: 120px; height: 120px; border-radius: 50%;
+            margin: 15px 0;
+            background: conic-gradient(#22c55e 0deg, #ef4444 0deg);
+            position: relative;
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+        }
+        .pie-inner {
+            position: absolute; top: 15px; left: 15px;
+            width: 90px; height: 90px;
+            background: #1e293b; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; color: #fff;
+        }
+
+        /* --- FIXED: VERTICAL GRAPH STYLES (SCROLLABLE & SMALLER) --- */
+        .graph-container {
+            height: 140px; /* Reduced height to fit better */
+            display: flex;
+            align-items: flex-end;
+            gap: 8px; /* Reduced gap */
+            padding-bottom: 5px;
+            border-bottom: 2px solid rgba(255,255,255,0.1);
+            margin-top: 20px;
+            overflow-x: auto; /* Enable horizontal scrolling */
+            width: 100%;
+            padding-right: 10px;
+        }
+        
+        .graph-bar-group {
+            flex: 0 0 auto; /* Prevent bars from squashing */
+            min-width: 45px; /* Minimum width for readability */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100%;
+            justify-content: flex-end;
+        }
+
+        .graph-bar {
+            width: 100%;
+            background: linear-gradient(to top, #3b82f6, #60a5fa);
+            border-radius: 4px 4px 0 0;
+            transition: height 1s ease-out;
+            position: relative;
+            min-height: 4px;
+        }
+        .graph-label {
+            margin-top: 8px;
+            font-size: 0.65rem; /* Smaller font */
+            color: #94a3b8;
+            text-align: center;
+            width: 100%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .graph-value {
+            position: absolute;
+            top: -18px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.65rem;
+            color: #fff;
+            font-weight: bold;
+        }
+        .bar-bg { background: rgba(255,255,255,0.05); height: 6px; border-radius: 99px; overflow: hidden; }
+        .bar-fill { height: 100%; background: #60a5fa; transition: width 1s ease; }
+    </style>
+</head>
+<body class="flex flex-col h-screen overflow-hidden">
+
+    <header class="h-16 border-b border-white/5 bg-[#020617]/90 backdrop-blur-md flex items-center justify-between px-6 z-[100] flex-shrink-0 relative">
+        <div class="flex items-center gap-4">
+            <a href="physics.html" class="w-10 h-10 rounded-full hover:bg-white/5 flex items-center justify-center text-slate-400 hover:text-white transition-all group cursor-pointer" title="Back to Chapters">
+                <svg class="w-5 h-5 group-hover:-translate-x-1 transition-transform pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+            </a>
+            <div>
+                <p class="text-[10px] uppercase tracking-widest text-blue-400 font-bold" id="header-subtitle">Now Watching</p>
+                <h1 id="header-title" class="text-sm md:text-base font-bold text-white truncate max-w-[200px] md:max-w-md">Electrostatic Potential & Capacitance</h1>
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+            <button id="quiz-back-btn" onclick="exitQuiz()" class="hidden px-3 py-1.5 text-xs font-bold bg-white/10 hover:bg-white/20 rounded-lg text-white transition-colors border border-white/10">
+                Back to Lecture
+            </button>
+            <span class="text-xs text-slate-500 font-medium hidden md:block" id="save-status">Tracking Progress...</span>
+            <div class="flex items-center gap-2 bg-slate-800 px-3 py-1 rounded-full border border-white/10">
+                 <div class="w-2 h-2 rounded-full bg-orange-500 animate-pulse" id="live-indicator"></div>
+                 <span class="text-xs font-bold text-white" id="live-percent">0%</span>
+            </div>
+        </div>
+        <div id="visual-progress" class="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-blue-500 to-cyan-500 transition-all duration-700 ease-in-out shadow-[0_0_10px_rgba(96,165,250,0.5)]" style="width: 0%"></div>
+    </header>
+
+    <main class="flex-grow overflow-y-auto p-4 md:p-8 flex flex-col items-center relative">
+        
+        <div id="content-view" class="w-full max-w-4xl animate-fade-in pb-20">
+            
+            <div class="video-container mb-6">
+                <iframe id="main-player" src="https://www.youtube.com/embed/IhJSYCxnfRY?autoplay=0&rel=0&modestbranding=1" title="Video Player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+            </div>
+
+            <div class="flex flex-col md:flex-row items-center justify-between gap-4 p-6 bg-[#0f172a] border border-white/5 rounded-2xl shadow-lg mb-10">
+                <div class="w-full md:w-auto">
+                    <h2 id="video-title" class="text-2xl font-bold text-white mb-1">Electrostatic Potential & Capacitance</h2>
+                    <p class="text-slate-400 text-sm">Physics • Class 12 • Chapter 2</p>
+                </div>
+                <div class="flex items-center gap-3 w-full md:w-auto">
+                    <button id="mark-done-btn" onclick="toggleStatus()" class="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-slate-800 border border-slate-600 transition-all text-sm font-semibold text-slate-200 group cursor-not-allowed opacity-50">
+                        <div class="w-5 h-5 rounded-full border-2 border-slate-400 group-hover:border-white flex items-center justify-center">
+                            <svg class="w-3 h-3 text-white opacity-0 transition-opacity check-icon" fill="currentColor" viewBox="0 0 20 20"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"></path></svg>
+                        </div>
+                        <span class="btn-text" id="mark-btn-text">Locked (Studying...)</span>
+                    </button>
+                    
+                    <button onclick="startQuiz()" class="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:-translate-y-0.5 transition-all group">
+                        <span>Take Test</span>
+                        <svg class="w-5 h-5 group-hover:rotate-6 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                    </button>
+                </div>
+            </div>
+
+            <div id="detailed-notes" class="notes-content">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="h-8 w-1 bg-blue-500 rounded-full"></div>
+                    <h2 class="!m-0 !border-0 !p-0 text-3xl text-white">Detailed Physics Notes</h2>
+                </div>
+                
+                <p class="text-slate-400 italic mb-8">Comprehensive notes based on NCERT Class 12 Physics - Chapter 2</p>
+
+                <section id="intro">
+                    <h2>1. Introduction & Electrostatic Potential</h2>
+                    <p>The electrostatic force is a <strong>conservative force</strong>, much like the gravitational force. The work done by an external force in moving a charge against an electrostatic field gets stored as potential energy.</p>
+                    
+                    <h3>Electrostatic Potential Energy</h3>
+                    <p>Consider bringing a charge \( q \) from a point R to a point P against the repulsive force of a charge \( Q \). The work done by the external force is stored as potential energy difference:</p>
+                    <div class="formula-box">
+                        $$ \Delta U = U_P - U_R = W_{RP} $$
+                    </div>
+                    <ul>
+                        <li>The work done depends <strong>only on the initial and final positions</strong> and is independent of the path taken.</li>
+                        <li>The actual value of potential energy is not physically significant; only the difference is significant. We conventionally choose potential energy at infinity to be zero.</li>
+                    </ul>
+
+                    <h3>Electrostatic Potential (V)</h3>
+                    <p>Electrostatic potential is defined as the work done per unit test charge.</p>
+                    <div class="formula-box">
+                        $$ V_P = \frac{W_{\infty P}}{q} $$
+                    </div>
+                    <p><strong>Definition:</strong> Electrostatic potential at a point is the work done by an external force in bringing a unit positive charge (without acceleration) from infinity to that point.</p>
+                </section>
+
+                <section id="point-charge">
+                    <h2>2. Potential due to a Point Charge</h2>
+                    <p>Consider a source charge \( Q \) at the origin. To find the potential at a point P distance \( r \) away, we calculate the work done in bringing a unit positive test charge from infinity to P.</p>
+                    
+                    <div class="diagram-container">
+                        <div class="charge-diagram">
+                            <div class="equi-ring ring-1"></div>
+                            <div class="equi-ring ring-2"></div>
+                            <div class="equi-ring ring-3"></div>
+                            <div class="charge-core">+Q</div>
+                        </div>
+                        <div class="caption">
+                            <strong>Animated Figure 2.1:</strong> Equipotential surfaces (spheres) expanding outward from a positive point charge.
+                        </div>
+                    </div>
+
+                    <div class="formula-box">
+                        $$ V(r) = \frac{Q}{4\pi\epsilon_0 r} $$
+                    </div>
+                    <ul>
+                        <li>\( V \propto 1/r \) (Potential varies inversely with distance).</li>
+                        <li>For \( Q > 0 \), potential is positive (Work done against repulsion).</li>
+                        <li>For \( Q < 0 \), potential is negative (Work done by attraction).</li>
+                    </ul>
+                    <div class="note-highlight">
+                        <strong>Graph Contrast:</strong> While Electric Field \( E \propto 1/r^2 \), Potential \( V \propto 1/r \).
+                    </div>
+                </section>
+
+                <section id="dipole">
+                    <h2>3. Potential due to an Electric Dipole</h2>
+                    <p>An electric dipole consists of two charges \( q \) and \( -q \) separated by a distance \( 2a \). The potential depends on the distance \( r \) and the angle \( \theta \) between the position vector and dipole moment \( \mathbf{p} \).</p>
+                    
+                    <div class="diagram-container">
+                        <div class="dipole-scene">
+                            <div class="dipole-stick">
+                                <div class="charge neg">-q</div>
+                                <div class="charge pos">+q</div>
+                            </div>
+                        </div>
+                        <div class="caption">
+                            <strong>Animated Figure 2.2:</strong> A dipole in a uniform electric field (background lines) experiences torque.
+                        </div>
+                    </div>
+
+                    <h3>For large distances (\( r \gg a \)):</h3>
+                    <div class="formula-box">
+                        $$ V(r) = \frac{1}{4\pi\epsilon_0} \frac{\mathbf{p} \cdot \hat{\mathbf{r}}}{r^2} = \frac{p \cos\theta}{4\pi\epsilon_0 r^2} $$
+                    </div>
+                    
+                    <h3>Important Cases:</h3>
+                    <ul>
+                        <li><strong>On the Dipole Axis (\( \theta = 0, \pi \)):</strong> Potential is maximum.
+                            $$ V = \pm \frac{1}{4\pi\epsilon_0} \frac{p}{r^2} $$
+                        </li>
+                        <li><strong>On the Equatorial Plane (\( \theta = \pi/2 \)):</strong> Potential is zero everywhere on this plane.</li>
+                    </ul>
+                </section>
+
+                <section id="system-charges">
+                    <h2>4. Potential due to a System of Charges</h2>
+                    <p>By the superposition principle, the potential at a point due to a system of charges is the algebraic sum of the potentials due to individual charges.</p>
+                    <div class="formula-box">
+                        $$ V = V_1 + V_2 + \dots + V_n = \frac{1}{4\pi\epsilon_0} \sum_{i=1}^{n} \frac{q_i}{r_{iP}} $$
+                    </div>
+                </section>
+
+                <section id="equipotential">
+                    <h2>5. Equipotential Surfaces</h2>
+                    <p>An equipotential surface is a surface where the potential has a constant value at all points.</p>
+                    
+                    <h3>Key Properties</h3>
+                    <ol>
+                        <li><strong>Shape:</strong> For a single point charge, they are concentric spheres centred at the charge. For a uniform electric field, they are planes normal to the field.</li>
+                        <li><strong>Relation to Field:</strong> The electric field is always normal to the equipotential surface at every point.</li>
+                        <li><strong>Work Done:</strong> No work is required to move a test charge between any two points on an equipotential surface.</li>
+                    </ol>
+
+                    <h3>Field-Potential Relation</h3>
+                    <div class="formula-box">
+                        $$ E = -\frac{dV}{dr} $$
+                    </div>
+                    <p>The electric field is in the direction where the potential decreases steepest. Its magnitude is the change in potential per unit displacement normal to the surface.</p>
+                </section>
+
+                <section id="potential-energy">
+                    <h2>6. Potential Energy of a System of Charges</h2>
+                    <p>The potential energy of a system is the work done by an external agency in assembling the charges at their locations, bringing them from infinity.</p>
+                    
+                    <h3>Two Point Charges</h3>
+                    <div class="formula-box">
+                        $$ U = \frac{1}{4\pi\epsilon_0} \frac{q_1 q_2}{r_{12}} $$
+                    </div>
+                    <p>Where \( r_{12} \) is the distance between charges.</p>
+                </section>
+
+                <section id="conductors">
+                    <h2>7. Electrostatics of Conductors</h2>
+                    <p>Conductors contain mobile charge carriers (free electrons). In static equilibrium, they exhibit the following properties:</p>
+                    
+                    <ol>
+                        <li><strong>Inside a conductor, electrostatic field is zero.</strong> Free charges distribute themselves to cancel any internal field.</li>
+                        <li><strong>At the surface, electric field must be normal.</strong> If there were a tangential component, charges would flow.</li>
+                        <li><strong>The interior can have no excess charge.</strong> Any excess charge resides entirely on the surface.</li>
+                        <li><strong>Electrostatic potential is constant</strong> throughout the volume and has the same value on the surface.</li>
+                        <li><strong>Electric field at the surface:</strong>
+                            $$ \mathbf{E} = \frac{\sigma}{\epsilon_0} \hat{\mathbf{n}} $$
+                        </li>
+                        <li><strong>Electrostatic Shielding:</strong> The electric field inside a cavity of a conductor is always zero, regardless of outside fields.</li>
+                    </ol>
+                </section>
+
+                <section id="dielectrics">
+                    <h2>8. Dielectrics and Polarisation</h2>
+                    <p>Dielectrics are non-conducting substances. When placed in an external electric field, they undergo <strong>polarisation</strong> rather than conduction.</p>
+                    
+                    <ul>
+                        <li><strong>Non-polar Molecules:</strong> (e.g., \( O_2, H_2 \)) Centers of positive and negative charge coincide. External field induces a dipole moment.</li>
+                        <li><strong>Polar Molecules:</strong> (e.g., \( HCl, H_2O \)) Have permanent dipole moments. External field tends to align them.</li>
+                    </ul>
+
+                    <h3>Polarisation (P)</h3>
+                    <p>Defined as dipole moment per unit volume. For linear isotropic dielectrics:</p>
+                    <div class="formula-box">
+                        $$ \mathbf{P} = \chi_e \mathbf{E} $$
+                    </div>
+                </section>
+
+                <section id="capacitors">
+                    <h2>9. Capacitors and Capacitance</h2>
+                    <p>A capacitor is a system of two conductors separated by an insulator. It stores electric charge and energy.</p>
+                    <p><strong>Capacitance (C):</strong> Defined as the ratio of charge \( Q \) to potential difference \( V \).</p>
+                    <div class="formula-box">
+                        $$ C = \frac{Q}{V} $$
+                    </div>
+                    <p>The unit is Farad (F). Capacitance depends only on the geometry (shape, size, separation) and the dielectric medium.</p>
+
+                    <h3>Parallel Plate Capacitor</h3>
+                    <p>Consists of two parallel plates of area \( A \) separated by distance \( d \).</p>
+                    
+                    <div class="diagram-container">
+                        <div class="capacitor-diagram">
+                            <div class="plate">+ + + + + + + + +</div>
+                            <div class="field-lines-container">
+                                <div class="field-arrow" style="left: 10%; animation-delay: 0s;"></div>
+                                <div class="field-arrow" style="left: 30%; animation-delay: 0.5s;"></div>
+                                <div class="field-arrow" style="left: 50%; animation-delay: 0.2s;"></div>
+                                <div class="field-arrow" style="left: 70%; animation-delay: 0.8s;"></div>
+                                <div class="field-arrow" style="left: 90%; animation-delay: 0.3s;"></div>
+                            </div>
+                            <div class="plate">- - - - - - - - -</div>
+                        </div>
+                        <div class="caption">
+                            <strong>Animated Figure 2.3:</strong> Electric field \(\mathbf{E}\) flows from positive plate to negative plate.
+                        </div>
+                    </div>
+
+                    <ul>
+                        <li><strong>Vacuum between plates:</strong>
+                            $$ C_0 = \frac{\epsilon_0 A}{d} $$
+                        </li>
+                        <li><strong>Dielectric between plates:</strong> If a dielectric of constant \( K \) fills the space, capacitance increases:
+                            $$ C = \frac{K \epsilon_0 A}{d} = K C_0 $$
+                            Where \( K \) is the dielectric constant (\( K > 1 \)).
+                        </li>
+                    </ul>
+                </section>
+
+                <section id="combination">
+                    <h2>10. Combination of Capacitors</h2>
+                    
+                    <h3>Capacitors in Series</h3>
+                    <div class="formula-box">
+                        $$ \frac{1}{C_{eq}} = \frac{1}{C_1} + \frac{1}{C_2} + \dots + \frac{1}{C_n} $$
+                    </div>
+
+                    <h3>Capacitors in Parallel</h3>
+                    <div class="formula-box">
+                        $$ C_{eq} = C_1 + C_2 + \dots + C_n $$
+                    </div>
+                </section>
+
+                <section id="energy">
+                    <h2>11. Energy Stored in a Capacitor</h2>
+                    <p>Work must be done to transfer charge from one plate to another against the potential difference. This work is stored as electrostatic potential energy.</p>
+                    <div class="formula-box">
+                        $$ U = \frac{Q^2}{2C} = \frac{1}{2}CV^2 = \frac{1}{2}QV $$
+                    </div>
+
+                    <h3>Energy Density</h3>
+                    <p>Energy stored per unit volume in the electric field region:</p>
+                    <div class="formula-box">
+                        $$ u = \frac{1}{2}\epsilon_0 E^2 $$
+                    </div>
+                </section>
+                <div class="mt-10 pt-6 border-t border-white/10 text-center text-slate-500 text-sm">
+                    BRO YOU CAN AND YOU WILL ⚡
+                </div>
+            </div>
+        </div>
+
+        <div id="quiz-view" class="w-full max-w-4xl flex-col items-center animate-fade-in hidden pb-20">
+            <div class="w-full bg-[#1e293b] border border-white/5 rounded-2xl p-4 mb-6 flex justify-between items-center shadow-lg">
+                <h2 class="text-xl font-bold text-white">Physics Master Quiz</h2>
+                <div class="px-3 py-1 bg-black/30 rounded-lg border border-white/10 font-mono text-lg text-white" id="timer">15:00</div>
+            </div>
+
+            <div id="screen-start" class="w-full bg-[#0f172a] border border-white/5 rounded-2xl p-8 text-center shadow-lg flex flex-col items-center">
+                <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-600 flex items-center justify-center mb-6 shadow-lg shadow-blue-500/20">
+                    <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </div>
+                <h2 class="text-3xl font-bold text-white mb-2">Practice Quiz</h2>
+                <p class="text-slate-400 mb-8">15 Questions • 15 Minutes • Board Level MCQs</p>
+                <button onclick="quizApp.start()" class="px-8 py-3 rounded-xl bg-white text-black font-bold hover:scale-105 transition-transform">Start Now</button>
+            </div>
+
+            <div id="screen-quiz" class="w-full hidden flex-col">
+                <div class="mb-6">
+                    <div class="text-blue-400 font-bold text-sm tracking-wider mb-2">QUESTION <span id="q-idx">1</span>/15</div>
+                    <div id="q-text" class="text-xl md:text-2xl font-bold text-white leading-relaxed">Loading...</div>
+                </div>
+                <div id="options-box" class="space-y-3 mb-8 w-full"></div>
+                <div class="flex justify-end">
+                    <button id="btn-next" onclick="quizApp.next()" disabled class="px-6 py-3 rounded-xl bg-blue-600 text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-500 transition-colors">Next Question</button>
+                </div>
+            </div>
+
+            <div id="screen-result" class="w-full hidden flex-col">
+                <div class="bg-[#1e293b] border border-white/5 rounded-2xl p-6 mb-6 flex flex-col md:flex-row items-center justify-between gap-6 shadow-lg">
+                    <div class="text-center md:text-left">
+                        <p class="text-slate-400 text-xs uppercase tracking-widest font-bold mb-1">Total Score</p>
+                        <div class="text-5xl font-black text-white"><span id="score">0</span><span class="text-2xl text-slate-500">/15</span></div>
+                        <div id="score-text" class="text-green-400 font-bold mt-2">0% Accuracy</div>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <div class="pie-chart" id="chart-pie">
+                            <div class="pie-inner" id="pie-text">0%</div>
+                        </div>
+                    </div>
+                    <div class="flex gap-3">
+                        <button onclick="quizApp.start()" class="px-5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition-colors border border-white/10">Retake Quiz</button>
+                        <button onclick="exitQuiz()" class="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-colors">Finish & Save</button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <div class="bg-[#1e293b] border border-white/5 rounded-2xl p-6 shadow-lg">
+                        <div class="text-slate-400 text-xs uppercase tracking-widest font-bold mb-4 flex items-center gap-2">
+                            <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z"></path></svg>
+                            Topic Wise Performance
+                        </div>
+                        <div id="chart-bars" class="space-y-4"></div>
+                    </div>
+
+                    <div class="bg-[#1e293b] border border-white/5 rounded-2xl p-6 shadow-lg">
+                        <div class="text-slate-400 text-xs uppercase tracking-widest font-bold mb-4 flex items-center gap-2">
+                            <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path></svg>
+                            Analysis Graph
+                        </div>
+                        <div id="topic-graph" class="graph-container">
+                        </div>
+                    </div>
+                </div>
+
+                <h3 class="text-xl font-bold text-white mb-4 pl-1 border-l-4 border-blue-500">Detailed Review</h3>
+                <div id="review-box" class="space-y-4 w-full"></div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // --- 1. SMART PROGRESS TRACKING LOGIC (UPDATED FOR CHAPTER 2) ---
+        const KEY_PROGRESS = 'physics_chapter_2_progress'; 
+        const KEY_STATE = 'physics_chapter_2_state';       
+
+        const LOCK_TIME = 7200; // 2 HOURS (7200 seconds)
+        const INTERVAL_DURATION = 1800; // 30 Minutes
+
+        const DEFAULT_STATE = {
+            manual: false, // Worth 50%
+            test: false,   // Worth 20%
+            timeIntervals: 0, // Max 4, worth 7.5% each (Total 30%)
+            timeSpentSeconds: 0 
+        };
+        
+        let chapterState = { ...DEFAULT_STATE };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadState();
+            startTimer();
+            updateUI();
+            saveAndCalculate(); 
+        });
+
+        function loadState() {
+            const savedState = localStorage.getItem(KEY_STATE);
+            if (savedState) {
+                try {
+                    const parsed = JSON.parse(savedState);
+                    chapterState = { ...DEFAULT_STATE, ...parsed };
+                    if(typeof chapterState.timeIntervals !== 'number') chapterState.timeIntervals = 0;
+                    if(typeof chapterState.timeSpentSeconds !== 'number') chapterState.timeSpentSeconds = 0;
+                } catch(e) {
+                    console.error("State load error, resetting", e);
+                    chapterState = { ...DEFAULT_STATE };
+                }
+            }
+        }
+
+        function saveAndCalculate() {
+            localStorage.setItem(KEY_STATE, JSON.stringify(chapterState));
+            
+            // MATH: 50% + 20% + (4 * 7.5%) = 100%
+            let percent = 0;
+            if (chapterState.manual) percent += 50;
+            if (chapterState.test) percent += 20;
+            percent += (chapterState.timeIntervals * 7.5);
+
+            if (percent > 100) percent = 100; 
+            
+            const displayPercent = Math.floor(percent);
+
+            localStorage.setItem(KEY_PROGRESS, displayPercent.toString());
+
+            const indicator = document.getElementById('live-indicator');
+            const txt = document.getElementById('live-percent');
+            const bar = document.getElementById('visual-progress');
+            
+            if(txt) txt.innerText = `${displayPercent}%`;
+            if(bar) bar.style.width = `${displayPercent}%`;
+            
+            if (indicator) {
+                if (displayPercent === 100) {
+                    indicator.classList.remove('bg-orange-500', 'animate-pulse');
+                    indicator.classList.add('bg-green-500');
+                } else {
+                    indicator.classList.add('bg-orange-500', 'animate-pulse');
+                    indicator.classList.remove('bg-green-500');
+                }
+            }
+        }
+
+        function startTimer() {
+            setInterval(() => {
+                chapterState.timeSpentSeconds++;
+                
+                // 1. INTERVAL CHECK
+                let currentIntervals = Math.floor(chapterState.timeSpentSeconds / INTERVAL_DURATION);
+                if (currentIntervals > 4) currentIntervals = 4;
+
+                if (currentIntervals > chapterState.timeIntervals) {
+                    chapterState.timeIntervals = currentIntervals;
+                    saveAndCalculate();
+                    const status = document.getElementById('save-status');
+                    if(status) {
+                        status.innerText = `Progress Added (+7.5%)`;
+                        setTimeout(() => status.innerText = "Tracking Progress...", 3000);
+                    }
+                }
+
+                // 2. UNLOCK CHECK
+                const isLockedUI = document.getElementById('mark-btn-text').innerText.includes('Locked');
+                if (chapterState.timeSpentSeconds >= LOCK_TIME && isLockedUI) {
+                    updateUI(); 
+                    const status = document.getElementById('save-status');
+                    if(status) status.innerText = "Chapter Unlocked!";
+                }
+
+                if (chapterState.timeSpentSeconds % 10 === 0) {
+                    localStorage.setItem(KEY_STATE, JSON.stringify(chapterState));
+                }
+            }, 1000);
+        }
+
+        function toggleStatus() {
+            if (chapterState.timeSpentSeconds < LOCK_TIME && !chapterState.manual) {
+                alert("You must watch this lecture for at least 2 hours before marking it as complete.");
+                return;
+            }
+            chapterState.manual = !chapterState.manual; 
+            updateUI(); 
+            saveAndCalculate(); 
+        }
+
+        function updateUI() {
+            const btn = document.getElementById('mark-done-btn');
+            if(!btn) return;
+            
+            const icon = btn.querySelector('.check-icon');
+            const text = document.getElementById('mark-btn-text');
+            const circle = btn.querySelector('div');
+            const isLocked = chapterState.timeSpentSeconds < LOCK_TIME && !chapterState.manual;
+
+            if (chapterState.manual) {
+                btn.classList.remove('bg-slate-800', 'opacity-50', 'cursor-not-allowed');
+                btn.classList.add('bg-green-600', 'hover:bg-green-500', 'border-green-500', 'text-white');
+                circle.classList.remove('border-slate-400');
+                circle.classList.add('border-white', 'bg-white/20');
+                icon.classList.remove('opacity-0');
+                text.innerText = "Completed";
+            } else if (isLocked) {
+                btn.classList.add('bg-slate-800', 'opacity-50', 'cursor-not-allowed');
+                btn.classList.remove('bg-green-600', 'hover:bg-green-500', 'border-green-500', 'text-white');
+                circle.classList.add('border-slate-400');
+                circle.classList.remove('border-white', 'bg-white/20');
+                icon.classList.add('opacity-0');
+                text.innerText = "Locked (Studying...)";
+            } else {
+                btn.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-green-600');
+                btn.classList.add('bg-slate-800', 'hover:bg-slate-700');
+                circle.classList.add('border-slate-400');
+                icon.classList.add('opacity-0');
+                text.innerText = "Mark Complete";
+            }
+        }
+
+        function finishQuizInternal() {
+            if (!chapterState.test) {
+                chapterState.test = true;
+                saveAndCalculate();
+            }
+        }
+
+        const contentView = document.getElementById('content-view');
+        const quizView = document.getElementById('quiz-view');
+        const headerSub = document.getElementById('header-subtitle');
+        const quizBackBtn = document.getElementById('quiz-back-btn');
+        const saveStatus = document.getElementById('save-status');
+
+        function startQuiz() {
+            contentView.classList.add('hidden');
+            quizView.classList.remove('hidden');
+            quizView.classList.add('flex');
+            headerSub.innerText = "Quiz Mode";
+            quizBackBtn.classList.remove('hidden');
+            saveStatus.classList.add('hidden');
+            const iframe = document.getElementById('main-player');
+            const src = iframe.src;
+            iframe.src = ''; 
+            iframe.setAttribute('data-src', src); 
+        }
+
+        function exitQuiz() {
+            quizView.classList.add('hidden');
+            quizView.classList.remove('flex');
+            contentView.classList.remove('hidden');
+            headerSub.innerText = "Now Watching";
+            quizBackBtn.classList.add('hidden');
+            saveStatus.classList.remove('hidden');
+            const iframe = document.getElementById('main-player');
+            const savedSrc = iframe.getAttribute('data-src');
+            if(savedSrc) iframe.src = savedSrc;
+        }
+
+        // --- QUESTION DATA (Chapter 2) ---
+        const questions = [
+            {
+                id: 1,
+                text: "The relationship between electric field E and electric potential V at a point is given by:",
+                options: ["E = dV/dr", "E = -dV/dr", "V = -dE/dr", "E = V × r"],
+                correct: 1,
+                topic: "Potential & Field",
+                explanation: "Electric field is the negative gradient of potential: E = -dV/dr. The negative sign implies E is in direction of decreasing potential."
+            },
+            {
+                id: 2,
+                text: "The electric potential due to a point charge Q at a distance r varies as:",
+                options: ["1/r", "1/r²", "r", "1/r³"],
+                correct: 0,
+                topic: "Point Charge",
+                explanation: "For a single point charge, V = Q / (4πε₀r). Thus, V is proportional to 1/r."
+            },
+            {
+                id: 3,
+                text: "What is the work done in moving a test charge 'q' over an equipotential surface?",
+                options: ["Positive", "Negative", "Zero", "Infinite"],
+                correct: 2,
+                topic: "Equipotential",
+                explanation: "On an equipotential surface, potential difference dV = 0. Work done W = q(dV) = 0."
+            },
+            {
+                id: 4,
+                text: "The electric field inside a cavity of a conductor (with no charges inside the cavity) is:",
+                options: ["Uniform", "Zero", "Proportional to charge on surface", "Infinite"],
+                correct: 1,
+                topic: "Conductors",
+                explanation: "This is known as Electrostatic Shielding. The electric field inside the cavity of a conductor is always zero."
+            },
+            {
+                id: 5,
+                text: "The capacitance of a parallel plate capacitor depends on:",
+                options: ["Charge on plates", "Potential difference", "Geometry and separation of plates", "Material of the plates"],
+                correct: 2,
+                topic: "Capacitance",
+                explanation: "Capacitance C = ε₀A/d. It depends only on the area (A), separation (d), and the dielectric medium, not on Q or V."
+            },
+            {
+                id: 6,
+                text: "If a dielectric slab of constant K is inserted between the plates of a capacitor, the capacitance becomes:",
+                options: ["K times", "1/K times", "K² times", "Unchanged"],
+                correct: 0,
+                topic: "Dielectrics",
+                explanation: "When a dielectric is inserted, the capacitance increases by a factor of K. C_new = K × C_0."
+            },
+            {
+                id: 7,
+                text: "The electric potential at a large distance 'r' from an electric dipole varies as:",
+                options: ["1/r", "1/r²", "1/r³", "Constant"],
+                correct: 1,
+                topic: "Dipole",
+                explanation: "For a dipole, V = (p cosθ) / (4πε₀r²). Hence, V varies as 1/r² (unlike 1/r for point charge)."
+            },
+            {
+                id: 8,
+                text: "Three capacitors each of capacitance C are connected in series. The equivalent capacitance is:",
+                options: ["3C", "C/3", "3/C", "C"],
+                correct: 1,
+                topic: "Combination",
+                explanation: "In series, 1/C_eq = 1/C + 1/C + 1/C = 3/C. Therefore, C_eq = C/3."
+            },
+            {
+                id: 9,
+                text: "The potential energy stored in a charged capacitor is given by:",
+                options: ["QV", "1/2 QV", "1/2 Q/V", "Q/V²"],
+                correct: 1,
+                topic: "Energy Stored",
+                explanation: "Energy U = (1/2)QV = (1/2)CV² = Q²/(2C)."
+            },
+            {
+                id: 10,
+                text: "The electrostatic potential energy of a system of two charges q₁ and q₂ separated by distance r is:",
+                options: ["(q₁q₂)/r²", "(q₁q₂)/r", "-(q₁q₂)/r", "(q₁q₂)/r³"],
+                correct: 1,
+                topic: "Potential Energy",
+                explanation: "Potential Energy U = (1/4πε₀) * (q₁q₂ / r)."
+            },
+            {
+                id: 11,
+                text: "Which of the following is the SI unit of capacitance?",
+                options: ["Coulomb", "Volt", "Farad", "Newton"],
+                correct: 2,
+                topic: "Capacitance",
+                explanation: "The SI unit of capacitance is the Farad (F), where 1 F = 1 Coulomb/Volt."
+            },
+            {
+                id: 12,
+                text: "For a charged conductor, the electric potential is:",
+                options: ["Zero everywhere", "Zero only at the surface", "Constant throughout the volume", "Maximum at the center"],
+                correct: 2,
+                topic: "Conductors",
+                explanation: "Inside a conductor, E = 0, which implies Potential V is constant throughout the volume and equals the value at the surface."
+            },
+            {
+                id: 13,
+                text: "The energy density (energy per unit volume) of an electric field E is:",
+                options: ["1/2 ε₀ E", "1/2 ε₀ E²", "ε₀ E²", "1/2 E²/ε₀"],
+                correct: 1,
+                topic: "Energy Stored",
+                explanation: "Energy density u = (1/2)ε₀E²."
+            },
+            {
+                id: 14,
+                text: "The angle between electric field lines and an equipotential surface is always:",
+                options: ["0°", "90°", "180°", "45°"],
+                correct: 1,
+                topic: "Equipotential",
+                explanation: "Electric field lines are always perpendicular (normal) to the equipotential surface at every point."
+            },
+            {
+                id: 15,
+                text: "When a dipole is placed in a uniform external electric field, its potential energy is minimum (most stable) when the angle θ between p and E is:",
+                options: ["0°", "90°", "180°", "270°"],
+                correct: 0,
+                topic: "Dipole",
+                explanation: "U = -pE cosθ. The value is minimum (-pE) when cosθ = 1, i.e., θ = 0° (Stable equilibrium)."
+            }
+        ];
+
+        const quizApp = {
+            idx: 0, answers: Array(questions.length).fill(null), timer: 900, interval: null,
+
+            start: function() {
+                this.idx = 0; this.answers.fill(null); this.timer = 900;
+                document.getElementById('screen-start').classList.add('hidden');
+                document.getElementById('screen-result').classList.add('hidden');
+                document.getElementById('screen-result').classList.remove('flex');
+                const quizScreen = document.getElementById('screen-quiz');
+                quizScreen.classList.remove('hidden');
+                quizScreen.classList.add('flex');
+                this.renderQ();
+                this.startTimer();
+            },
+
+            startTimer: function() {
+                clearInterval(this.interval);
+                this.interval = setInterval(() => {
+                    if(this.timer <= 0) { this.finish(); return; }
+                    this.timer--;
+                    const m = Math.floor(this.timer / 60);
+                    const s = this.timer % 60;
+                    document.getElementById('timer').innerText = `${m}:${s < 10 ? '0'+s : s}`;
+                }, 1000);
+            },
+
+            renderQ: function() {
+                const q = questions[this.idx];
+                document.getElementById('q-idx').innerText = this.idx + 1;
+                document.getElementById('q-text').innerText = q.text;
+                const box = document.getElementById('options-box');
+                box.innerHTML = '';
+                const nextBtn = document.getElementById('btn-next');
+                nextBtn.disabled = true;
+                nextBtn.innerText = (this.idx === questions.length - 1) ? "Submit Quiz" : "Next Question";
+
+                q.options.forEach((opt, i) => {
+                    const div = document.createElement('div');
+                    div.className = 'quiz-option';
+                    div.innerHTML = `<div class="quiz-circle"></div><span class="text-slate-300 font-medium">${opt}</span>`;
+                    div.onclick = () => this.select(i, div);
+                    box.appendChild(div);
+                });
+            },
+
+            select: function(optIdx, el) {
+                this.answers[this.idx] = optIdx;
+                document.querySelectorAll('.quiz-option').forEach(x => x.classList.remove('selected'));
+                el.classList.add('selected');
+                document.getElementById('btn-next').disabled = false;
+            },
+
+            next: function() {
+                if(this.idx < questions.length - 1) { this.idx++; this.renderQ(); } 
+                else { this.finish(); }
+            },
+
+            finish: function() {
+                clearInterval(this.interval);
+                let correctCount = 0;
+                let topicStats = {};
+
+                questions.forEach((q, i) => {
+                    const isCorrect = (this.answers[i] === q.correct);
+                    if(isCorrect) correctCount++;
+                    if(!topicStats[q.topic]) topicStats[q.topic] = { total: 0, right: 0 };
+                    topicStats[q.topic].total++;
+                    if(isCorrect) topicStats[q.topic].right++;
+                });
+
+                document.getElementById('screen-quiz').classList.add('hidden');
+                document.getElementById('screen-quiz').classList.remove('flex');
+                const resultScreen = document.getElementById('screen-result');
+                resultScreen.classList.remove('hidden');
+                resultScreen.classList.add('flex');
+
+                document.getElementById('score').innerText = correctCount;
+                const pct = Math.round((correctCount / questions.length) * 100);
+                document.getElementById('score-text').innerText = `${pct}% Accuracy`;
+                const deg = (correctCount / questions.length) * 360;
+                document.getElementById('chart-pie').style.background = `conic-gradient(#22c55e 0deg ${deg}deg, #ef4444 ${deg}deg 360deg)`;
+                document.getElementById('pie-text').innerText = `${pct}%`;
+
+                const barBox = document.getElementById('chart-bars');
+                const graphBox = document.getElementById('topic-graph');
+                barBox.innerHTML = '';
+                graphBox.innerHTML = '';
+
+                for (const [topic, data] of Object.entries(topicStats)) {
+                    const topicPct = Math.round((data.right / data.total) * 100);
+                    barBox.innerHTML += `
+                        <div class="text-sm">
+                            <div class="flex justify-between text-slate-400 mb-1">
+                                <span class="font-medium text-white">${topic}</span>
+                                <span>${data.right}/${data.total}</span>
+                            </div>
+                            <div class="bar-bg"><div class="bar-fill" style="width: ${topicPct}%"></div></div>
+                        </div>`;
+                    graphBox.innerHTML += `
+                        <div class="graph-bar-group">
+                            <div class="graph-bar" style="height: ${topicPct}%;">
+                                <div class="graph-value">${topicPct}%</div>
+                            </div>
+                            <div class="graph-label">${topic}</div>
+                        </div>`;
+                }
+
+                finishQuizInternal(); 
+
+                const reviewBox = document.getElementById('review-box');
+                reviewBox.innerHTML = '';
+                questions.forEach((q, i) => {
+                    const isRight = (this.answers[i] === q.correct);
+                    reviewBox.innerHTML += `
+                        <div class="p-4 rounded-xl border border-white/5 bg-[#1e293b] ${isRight ? 'border-l-4 border-l-green-500' : 'border-l-4 border-l-red-500'}">
+                            <p class="font-bold text-white mb-2 text-base">Q${i+1}: ${q.text}</p>
+                            <div class="text-sm mb-2"><span class="${isRight ? 'text-green-400' : 'text-red-400'}">Answer: ${this.answers[i]!==null?q.options[this.answers[i]]:'Skipped'}</span></div>
+                            <div class="text-xs text-slate-400">${q.explanation}</div>
+                        </div>`;
+                });
+            }
+        };
+    </script>
+</body>
+</html>

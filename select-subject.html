@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Select Subject | JEE Matrix</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        background: '#0B1121',
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-out forwards',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0', transform: 'translateY(20px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #0B1121; 
+            color: #f8fafc;
+            background-image: 
+                radial-gradient(circle at 50% 0%, rgba(56, 189, 248, 0.1) 0%, transparent 60%),
+                radial-gradient(circle at 0% 100%, rgba(168, 85, 247, 0.05) 0%, transparent 40%);
+            min-height: 100vh;
+        }
+
+        .bg-grid {
+            background-size: 50px 50px;
+            background-image: linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+            mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
+        }
+
+        .subject-card {
+            background: rgba(17, 24, 39, 0.6);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .subject-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%; width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
+            transition: left 0.5s;
+        }
+
+        .subject-card:hover::before { left: 100%; }
+        
+        .subject-card:hover {
+            transform: translateY(-5px) scale(1.01);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Icon Glows */
+        .icon-box { transition: all 0.3s ease; }
+        .group:hover .glow-blue { box-shadow: 0 0 30px rgba(59, 130, 246, 0.5); background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+        .group:hover .glow-green { box-shadow: 0 0 30px rgba(16, 185, 129, 0.5); background: rgba(16, 185, 129, 0.2); color: #34d399; }
+        .group:hover .glow-red { box-shadow: 0 0 30px rgba(239, 68, 68, 0.5); background: rgba(239, 68, 68, 0.2); color: #f87171; }
+        .group:hover .glow-yellow { box-shadow: 0 0 30px rgba(234, 179, 8, 0.5); background: rgba(234, 179, 8, 0.2); color: #facc15; }
+        .group:hover .glow-pink { box-shadow: 0 0 30px rgba(236, 72, 153, 0.5); background: rgba(236, 72, 153, 0.2); color: #f472b6; }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen relative selection:bg-indigo-500/30">
+
+    <div class="fixed inset-0 bg-grid pointer-events-none z-0"></div>
+
+    <nav class="w-full z-[60] py-6 px-4 md:px-8 flex justify-between items-center">
+        <a href="boards.html" class="flex items-center gap-2 text-slate-400 hover:text-white transition group cursor-pointer z-50">
+            <div class="p-2.5 rounded-full bg-slate-800/50 group-hover:bg-slate-700 border border-slate-700 transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+            </div>
+            <span class="text-sm font-semibold tracking-wide">Back to Dashboard</span>
+        </a>
+    </nav>
+
+    <main class="max-w-4xl mx-auto px-4 pb-20 w-full flex-grow relative z-10 flex flex-col justify-center min-h-[70vh]">
+        
+        <div class="text-center mb-12 animate-fade-in">
+            <h1 class="text-3xl md:text-5xl font-bold mb-3 text-white tracking-tight">
+                Select Your <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">Subject</span>
+            </h1>
+            <p class="text-slate-400 text-sm">Tap a subject to access premium video lectures</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 animate-fade-in">
+
+            <a href="physics.html" class="subject-card group rounded-2xl p-1 relative">
+                <div class="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl"></div>
+                <div class="relative bg-[#0F1629] p-5 rounded-xl h-full flex items-center gap-5">
+                    <div class="icon-box glow-blue w-16 h-16 rounded-2xl bg-slate-800/50 border border-slate-700 flex items-center justify-center text-slate-400 transition-all flex-shrink-0">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-white group-hover:text-blue-400 transition-colors">Physics</h3>
+                        <p class="text-xs text-slate-400 mt-1">Derivations, Optics, Electrostats</p>
+                    </div>
+                    <div class="ml-auto opacity-0 group-hover:opacity-100 -translate-x-4 group-hover:translate-x-0 transition-all duration-300 text-blue-400">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>
+                    </div>
+                </div>
+            </a>
+
+            <a href="#" class="subject-card group rounded-2xl p-1 relative">
+                <div class="absolute inset-0 bg-gradient-to-r from-green-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl"></div>
+                <div class="relative bg-[#0F1629] p-5 rounded-xl h-full flex items-center gap-5">
+                    <div class="icon-box glow-green w-16 h-16 rounded-2xl bg-slate-800/50 border border-slate-700 flex items-center justify-center text-slate-400 transition-all flex-shrink-0">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-white group-hover:text-green-400 transition-colors">Chemistry</h3>
+                        <p class="text-xs text-slate-400 mt-1">Organic, Inorganic, Physical</p>
+                    </div>
+                    <div class="ml-auto opacity-0 group-hover:opacity-100 -translate-x-4 group-hover:translate-x-0 transition-all duration-300 text-green-400">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>
+                    </div>
+                </div>
+            </a>
+
+            <a href="#" class="subject-card group rounded-2xl p-1 relative">
+                <div class="absolute inset-0 bg-gradient-to-r from-red-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl"></div>
+                <div class="relative bg-[#0F1629] p-5 rounded-xl h-full flex items-center gap-5">
+                    <div class="icon-box glow-red w-16 h-16 rounded-2xl bg-slate-800/50 border border-slate-700 flex items-center justify-center text-slate-400 transition-all flex-shrink-0">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-white group-hover:text-red-400 transition-colors">Mathematics</h3>
+                        <p class="text-xs text-slate-400 mt-1">Calculus, Vectors, Probability</p>
+                    </div>
+                    <div class="ml-auto opacity-0 group-hover:opacity-100 -translate-x-4 group-hover:translate-x-0 transition-all duration-300 text-red-400">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>
+                    </div>
+                </div>
+            </a>
+
+            <a href="#" class="subject-card group rounded-2xl p-1 relative">
+                <div class="absolute inset-0 bg-gradient-to-r from-pink-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl"></div>
+                <div class="relative bg-[#0F1629] p-5 rounded-xl h-full flex items-center gap-5">
+                    <div class="icon-box glow-pink w-16 h-16 rounded-2xl bg-slate-800/50 border border-slate-700 flex items-center justify-center text-slate-400 transition-all flex-shrink-0">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-white group-hover:text-pink-400 transition-colors">English</h3>
+                        <p class="text-xs text-slate-400 mt-1">Flamingo, Vistas, Writing</p>
+                    </div>
+                    <div class="ml-auto opacity-0 group-hover:opacity-100 -translate-x-4 group-hover:translate-x-0 transition-all duration-300 text-pink-400">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>
+                    </div>
+                </div>
+            </a>
+
+            <a href="#" class="subject-card group rounded-2xl p-1 relative md:col-span-2">
+                <div class="absolute inset-0 bg-gradient-to-r from-yellow-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl"></div>
+                <div class="relative bg-[#0F1629] p-5 rounded-xl h-full flex items-center justify-start gap-6">
+                    <div class="icon-box glow-yellow w-16 h-16 rounded-2xl bg-slate-800/50 border border-slate-700 flex items-center justify-center text-slate-400 transition-all flex-shrink-0">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </div>
+                    <div class="flex-grow">
+                        <h3 class="text-xl font-bold text-white group-hover:text-yellow-400 transition-colors">Physical Education</h3>
+                        <p class="text-xs text-slate-400 mt-1">Yoga, Sports, Physiology</p>
+                    </div>
+                    <div class="ml-auto opacity-0 group-hover:opacity-100 -translate-x-4 group-hover:translate-x-0 transition-all duration-300 text-yellow-400">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>
+                    </div>
+                </div>
+            </a>
+
+        </div>
+
+    </main>
+
+</body>
+</html>

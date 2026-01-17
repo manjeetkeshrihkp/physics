@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lecture Player | JEE Matrix</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=Merriweather:ital,wght@0,300;0,400;0,700;1,400&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { 
+                        sans: ['Inter', 'sans-serif'],
+                        serif: ['Merriweather', 'serif'],
+                    },
+                    colors: { background: '#020617' },
+                    animation: { 'fade-in': 'fadeIn 0.5s ease-out forwards' },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0', transform: 'translateY(10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #020617;
+            color: #f8fafc;
+            background-image: linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            min-height: 100vh;
+        }
+
+        /* Video Container (16:9) */
+        .video-container {
+            position: relative;
+            padding-bottom: 56.25%;
+            height: 0;
+            overflow: hidden;
+            background: #000;
+            border-radius: 16px;
+            box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .video-container iframe {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        /* Notes Specific Styles */
+        .notes-content p, .notes-content li {
+            font-family: 'Merriweather', serif;
+            color: #cbd5e1;
+            line-height: 1.8;
+            margin-bottom: 1rem;
+        }
+        .notes-content h2 {
+            font-family: 'Inter', sans-serif;
+            color: #f472b6; /* Pink-400 */
+            font-weight: 700;
+            font-size: 1.5rem;
+            margin-top: 3rem;
+            margin-bottom: 1rem;
+            border-left: 4px solid #e879f9; /* Fuchsia-400 */
+            padding-left: 1rem;
+        }
+        .notes-content h3 {
+            font-family: 'Inter', sans-serif;
+            color: #f8fafc;
+            font-weight: 600;
+            font-size: 1.25rem;
+            margin-top: 2rem;
+            margin-bottom: 0.75rem;
+        }
+        .notes-content strong { color: #fff; }
+        .notes-content ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1.5rem; }
+        .notes-content ol { list-style-type: decimal; padding-left: 1.5rem; margin-bottom: 1.5rem; }
+        
+        .formula-box {
+            background-color: #1e293b;
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin: 1.5rem 0;
+            text-align: center;
+            font-family: 'Inter', sans-serif;
+            overflow-x: auto;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+
+        .note-highlight {
+            background-color: rgba(232, 121, 249, 0.1); 
+            border-left: 4px solid #e879f9;
+            padding: 1rem 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 0 8px 8px 0;
+            font-style: italic;
+        }
+
+        /* --- CHAPTER 8 ANIMATIONS (Ported from EMWaves.html) --- */
+        .diagram-container {
+            background-color: #0f172a;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 30px;
+            margin: 2rem 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            text-align: center;
+        }
+        .caption { margin-top: 15px; font-size: 0.85rem; color: #94a3b8; font-family: 'Inter', sans-serif; font-weight: bold; }
+
+        /* Animation 1: Displacement Current */
+        .capacitor-box { width: 300px; height: 150px; position: relative; display: flex; align-items: center; justify-content: center; }
+        .plate { width: 10px; height: 100px; background-color: #94a3b8; position: absolute; }
+        .plate-left { left: 50px; } .plate-right { right: 50px; }
+        .wire { height: 4px; width: 50px; background-color: #cbd5e1; position: absolute; }
+        .wire-l { left: 0; } .wire-r { right: 0; }
+        .efield-lines { position: absolute; left: 60px; width: 180px; height: 80px; display: flex; flex-direction: column; justify-content: space-around; }
+        .eline { height: 2px; background-color: #ef4444; width: 0; animation: fieldGrow 2s infinite alternate ease-in-out; }
+        .bfield-ring {
+            position: absolute; width: 60px; height: 120px; border: 2px dashed #3b82f6; border-radius: 50%;
+            left: 120px; opacity: 0; animation: bFieldAppear 2s infinite alternate ease-in-out;
+        }
+        @keyframes fieldGrow { 0% { width: 0; opacity: 0.2; } 100% { width: 180px; opacity: 1; } }
+        @keyframes bFieldAppear { 0% { opacity: 0; transform: scale(0.8); } 100% { opacity: 1; transform: scale(1.1); } }
+
+        /* Animation 2: EM Wave Propagation */
+        .wave-box { width: 300px; height: 200px; position: relative; perspective: 600px; transform-style: preserve-3d; }
+        .axis { position: absolute; background-color: white; }
+        .x-axis { width: 100%; height: 1px; top: 50%; }
+        .y-axis { width: 1px; height: 100%; left: 10%; }
+        .wave-particle { width: 6px; height: 6px; border-radius: 50%; position: absolute; top: 50%; left: 10%; }
+        .e-vec { background-color: #ef4444; animation: oscillateE 2s infinite ease-in-out; }
+        .b-vec { background-color: #3b82f6; animation: oscillateB 2s infinite ease-in-out; }
+        .wave-trace {
+            position: absolute; top: 50%; left: 10%; width: 250px; height: 2px;
+            background: repeating-linear-gradient(90deg, #ef4444, #ef4444 5px, transparent 5px, transparent 10px); opacity: 0.3;
+        }
+        @keyframes oscillateE { 0% { transform: translateY(0); } 25% { transform: translateY(-40px); } 50% { transform: translateY(0); } 75% { transform: translateY(40px); } 100% { transform: translateY(0); } }
+        @keyframes oscillateB { 0% { transform: translateZ(0); } 25% { transform: translateZ(40px); } 50% { transform: translateZ(0); } 75% { transform: translateZ(-40px); } 100% { transform: translateZ(0); } }
+
+        /* Animation 3: Spectrum */
+        .spectrum-bar {
+            width: 100%; height: 40px;
+            background: linear-gradient(to right, #ef4444 0%, #f97316 20%, #eab308 40%, #ffffff 50%, #a855f7 60%, #3b82f6 80%, #8b5cf6 100%);
+            border-radius: 20px; position: relative; margin-top: 20px;
+        }
+        .scanner {
+            width: 4px; height: 50px; background-color: white; position: absolute; top: -5px; left: 0;
+            box-shadow: 0 0 10px white; animation: scanSpectrum 6s infinite linear;
+        }
+        @keyframes scanSpectrum { 0% { left: 0; } 100% { left: 100%; } }
+
+        /* Quiz Specifics */
+        .quiz-option {
+            background: #1e293b;
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 1rem 1.25rem;
+            border-radius: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .quiz-option:hover { background: #334155; }
+        .quiz-option.selected { background: rgba(232, 121, 249, 0.2); border-color: #e879f9; }
+        .quiz-circle { width: 20px; height: 20px; border: 2px solid #64748b; border-radius: 50%; flex-shrink: 0; }
+        .quiz-option.selected .quiz-circle { border-color: #e879f9; background: #e879f9; }
+
+        /* Pie Chart */
+        .pie-chart {
+            width: 120px; height: 120px; border-radius: 50%;
+            margin: 15px 0;
+            background: conic-gradient(#22c55e 0deg, #ef4444 0deg);
+            position: relative;
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+        }
+        .pie-inner {
+            position: absolute; top: 15px; left: 15px;
+            width: 90px; height: 90px;
+            background: #1e293b; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; color: #fff;
+        }
+
+        /* Graph Container */
+        .graph-container {
+            height: 140px;
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+            padding-bottom: 5px;
+            border-bottom: 2px solid rgba(255,255,255,0.1);
+            margin-top: 20px;
+            overflow-x: auto;
+            width: 100%;
+            padding-right: 10px;
+        }
+        .graph-bar-group {
+            flex: 0 0 auto;
+            min-width: 45px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100%;
+            justify-content: flex-end;
+        }
+        .graph-bar {
+            width: 100%;
+            background: linear-gradient(to top, #e879f9, #f472b6);
+            border-radius: 4px 4px 0 0;
+            transition: height 1s ease-out;
+            position: relative;
+            min-height: 4px;
+        }
+        .graph-label {
+            margin-top: 8px; font-size: 0.65rem; color: #94a3b8;
+            text-align: center; width: 100%; white-space: nowrap;
+            overflow: hidden; text-overflow: ellipsis;
+        }
+        .graph-value {
+            position: absolute; top: -18px; left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.65rem; color: #fff; font-weight: bold;
+        }
+        .bar-bg { background: rgba(255,255,255,0.05); height: 6px; border-radius: 99px; overflow: hidden; }
+        .bar-fill { height: 100%; background: #e879f9; transition: width 1s ease; }
+    </style>
+</head>
+<body class="flex flex-col h-screen overflow-hidden">
+
+    <header class="h-16 border-b border-white/5 bg-[#020617]/90 backdrop-blur-md flex items-center justify-between px-6 z-[100] flex-shrink-0 relative">
+        <div class="flex items-center gap-4">
+            <a href="physics.html" class="w-10 h-10 rounded-full hover:bg-white/5 flex items-center justify-center text-slate-400 hover:text-white transition-all group cursor-pointer" title="Back to Chapters">
+                <svg class="w-5 h-5 group-hover:-translate-x-1 transition-transform pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+            </a>
+            <div>
+                <p class="text-[10px] uppercase tracking-widest text-pink-400 font-bold" id="header-subtitle">Now Watching</p>
+                <h1 id="header-title" class="text-sm md:text-base font-bold text-white truncate max-w-[200px] md:max-w-md">Electromagnetic Waves</h1>
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+            <button id="quiz-back-btn" onclick="exitQuiz()" class="hidden px-3 py-1.5 text-xs font-bold bg-white/10 hover:bg-white/20 rounded-lg text-white transition-colors border border-white/10">
+                Back to Lecture
+            </button>
+            <span class="text-xs text-slate-500 font-medium hidden md:block" id="save-status">Tracking Progress...</span>
+            <div class="flex items-center gap-2 bg-slate-800 px-3 py-1 rounded-full border border-white/10">
+                 <div class="w-2 h-2 rounded-full bg-orange-500 animate-pulse" id="live-indicator"></div>
+                 <span class="text-xs font-bold text-white" id="live-percent">0%</span>
+            </div>
+        </div>
+        <div id="visual-progress" class="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-pink-500 to-purple-500 transition-all duration-700 ease-in-out shadow-[0_0_10px_rgba(232,121,249,0.5)]" style="width: 0%"></div>
+    </header>
+
+    <main class="flex-grow overflow-y-auto p-4 md:p-8 flex flex-col items-center relative">
+        
+        <div id="content-view" class="w-full max-w-4xl animate-fade-in pb-20">
+            
+            <div class="video-container mb-6">
+                <iframe id="main-player" src="https://www.youtube.com/embed/r1izZ6s240Y?autoplay=0&rel=0&modestbranding=1" title="Video Player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+            </div>
+
+            <div class="flex flex-col md:flex-row items-center justify-between gap-4 p-6 bg-[#0f172a] border border-white/5 rounded-2xl shadow-lg mb-10">
+                <div class="w-full md:w-auto">
+                    <h2 id="video-title" class="text-2xl font-bold text-white mb-1">Electromagnetic Waves</h2>
+                    <p class="text-slate-400 text-sm">Physics • Class 12 • Chapter 8</p>
+                </div>
+                <div class="flex items-center gap-3 w-full md:w-auto">
+                    <button id="mark-done-btn" onclick="toggleStatus()" class="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-slate-800 border border-slate-600 transition-all text-sm font-semibold text-slate-200 group cursor-not-allowed opacity-50">
+                        <div class="w-5 h-5 rounded-full border-2 border-slate-400 group-hover:border-white flex items-center justify-center">
+                            <svg class="w-3 h-3 text-white opacity-0 transition-opacity check-icon" fill="currentColor" viewBox="0 0 20 20"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"></path></svg>
+                        </div>
+                        <span class="btn-text" id="mark-btn-text">Locked (Studying...)</span>
+                    </button>
+                    
+                    <button onclick="startQuiz()" class="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white font-bold shadow-lg shadow-pink-500/20 hover:shadow-pink-500/40 hover:-translate-y-0.5 transition-all group">
+                        <span>Take Test</span>
+                        <svg class="w-5 h-5 group-hover:rotate-6 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                    </button>
+                </div>
+            </div>
+
+            <div id="detailed-notes" class="notes-content">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="h-8 w-1 bg-pink-500 rounded-full"></div>
+                    <h2 class="!m-0 !border-0 !p-0 text-3xl text-white">Detailed Physics Notes</h2>
+                </div>
+                
+                <p class="text-slate-400 italic mb-8">Comprehensive notes based on NCERT Class 12 Physics - Chapter 8</p>
+
+                <section id="intro">
+                    <h2>1. Introduction</h2>
+                    <p>In previous chapters, we learned that an electric current produces a magnetic field and a changing magnetic field produces an electric field. James Clerk Maxwell (1865) argued that the converse must also be true: <strong>a time-varying electric field must produce a magnetic field.</strong></p>
+                    <p>This hypothesis led to the prediction of <strong>Electromagnetic (EM) Waves</strong>, which are coupled time-varying electric and magnetic fields propagating through space.</p>
+                </section>
+
+                <section id="displacement">
+                    <h2>2. Displacement Current</h2>
+                    <p>Maxwell noticed an inconsistency in Ampere's Circuital Law when applied to a charging capacitor. To resolve this, he introduced the concept of <strong>Displacement Current (\(I_d\))</strong>.</p>
+
+                    <div class="diagram-container">
+                        <div class="capacitor-box">
+                            <div class="wire wire-l"></div>
+                            <div class="plate plate-left"></div>
+                            
+                            <div class="efield-lines">
+                                <div class="eline"></div>
+                                <div class="eline"></div>
+                                <div class="eline"></div>
+                            </div>
+                            
+                            <div class="bfield-ring"></div> <div class="plate plate-right"></div>
+                            <div class="wire wire-r"></div>
+                        </div>
+                        <div class="caption">
+                            <strong>Figure 8.1:</strong> A changing Electric Field (red lines) between capacitor plates induces a Magnetic Field (blue ring), just like a conduction current would.
+                        </div>
+                    </div>
+
+                    <p>The displacement current is given by:</p>
+                    <div class="formula-box">
+                        $$ I_d = \epsilon_0 \frac{d\Phi_E}{dt} $$
+                    </div>
+                    <p>Where \(\Phi_E\) is the electric flux. The total current is the sum of conduction current (\(I_c\)) and displacement current (\(I_d\)). Ampere's Law is modified to the <strong>Ampere-Maxwell Law</strong>:</p>
+                    <div class="formula-box">
+                        $$ \oint \mathbf{B} \cdot d\mathbf{l} = \mu_0 (I_c + I_d) = \mu_0 I_c + \mu_0 \epsilon_0 \frac{d\Phi_E}{dt} $$
+                    </div>
+                </section>
+
+                <section id="maxwell">
+                    <h2>3. Maxwell's Equations</h2>
+                    <p>Maxwell unified electricity and magnetism into four fundamental equations. These equations govern all electromagnetic phenomena.</p>
+                    
+                    <ol>
+                        <li><strong>Gauss's Law for Electricity:</strong>
+                            <div class="formula-box">$$ \oint \mathbf{E} \cdot d\mathbf{A} = \frac{Q}{\epsilon_0} $$</div>
+                        </li>
+                        <li><strong>Gauss's Law for Magnetism:</strong>
+                            <div class="formula-box">$$ \oint \mathbf{B} \cdot d\mathbf{A} = 0 $$</div>
+                            (Implies no magnetic monopoles exist).
+                        </li>
+                        <li><strong>Faraday's Law:</strong>
+                            <div class="formula-box">$$ \oint \mathbf{E} \cdot d\mathbf{l} = - \frac{d\Phi_B}{dt} $$</div>
+                        </li>
+                        <li><strong>Ampere-Maxwell Law:</strong>
+                            <div class="formula-box">$$ \oint \mathbf{B} \cdot d\mathbf{l} = \mu_0 I_c + \mu_0 \epsilon_0 \frac{d\Phi_E}{dt} $$</div>
+                        </li>
+                    </ol>
+                </section>
+
+                <section id="emwaves">
+                    <h2>4. Electromagnetic Waves</h2>
+                    
+                    <h3>Nature of EM Waves</h3>
+                    <p>EM waves are transverse waves consisting of oscillating electric (\(\mathbf{E}\)) and magnetic (\(\mathbf{B}\)) fields.</p>
+                    <ul>
+                        <li>\(\mathbf{E}\) and \(\mathbf{B}\) are perpendicular to each other.</li>
+                        <li>Both are perpendicular to the direction of wave propagation.</li>
+                    </ul>
+
+                    <div class="diagram-container">
+                        <div class="wave-box">
+                            <div class="axis x-axis"></div> <div class="axis y-axis"></div> <div class="wave-trace"></div>
+                            <div class="wave-particle e-vec"></div> <div class="wave-particle b-vec"></div> 
+                        </div>
+                        <div class="caption">
+                            <strong>Figure 8.2:</strong> An EM wave propagating to the right. Red represents the Electric Field (Y-axis), Blue represents the Magnetic Field (Z-axis). They oscillate in phase.
+                        </div>
+                    </div>
+
+                    <h3>Properties</h3>
+                    <ul>
+                        <li><strong>Speed:</strong> In vacuum, they travel at the speed of light (\(c\)).
+                            <div class="formula-box">$$ c = \frac{1}{\sqrt{\mu_0 \epsilon_0}} \approx 3 \times 10^8 \, \text{m/s} $$</div>
+                        </li>
+                        <li><strong>Relation between E and B:</strong> The amplitudes are related by \(E_0 = c B_0\).</li>
+                        <li><strong>Energy Density:</strong> Energy is shared equally between electric and magnetic fields. Total energy density \(u\):
+                            <div class="formula-box">$$ u_{avg} = \frac{1}{2}\epsilon_0 E_{rms}^2 + \frac{1}{2\mu_0} B_{rms}^2 $$</div>
+                        </li>
+                        <li><strong>Momentum:</strong> EM waves carry momentum (\(p = U/c\)) and exert radiation pressure.</li>
+                    </ul>
+                </section>
+
+                <section id="spectrum">
+                    <h2>5. Electromagnetic Spectrum</h2>
+                    <p>Classification of EM waves based on frequency (\(\nu\)) or wavelength (\(\lambda\)).</p>
+
+                    <div class="diagram-container">
+                        <div style="width: 100%; text-align: center;">
+                            <div class="spectrum-bar">
+                                <div class="scanner"></div>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-top: 5px; color: #94a3b8;">
+                                <span>Long \(\lambda\) (Radio)</span>
+                                <span>Short \(\lambda\) (Gamma)</span>
+                            </div>
+                        </div>
+                        <div class="caption">
+                            <strong>Figure 8.3:</strong> The Electromagnetic Spectrum ordered by increasing frequency.
+                        </div>
+                    </div>
+
+                    <table class="w-full text-sm text-left border-collapse border border-white/10 rounded-lg overflow-hidden mt-4">
+                        <thead class="bg-white/10 text-pink-300">
+                            <tr>
+                                <th class="p-3">Type</th>
+                                <th class="p-3">Wavelength</th>
+                                <th class="p-3">Uses</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-white/10">
+                            <tr>
+                                <td class="p-3">Radio Waves</td>
+                                <td class="p-3">> 0.1 m</td>
+                                <td class="p-3">Radio/TV communication</td>
+                            </tr>
+                            <tr>
+                                <td class="p-3">Microwaves</td>
+                                <td class="p-3">0.1 m - 1 mm</td>
+                                <td class="p-3">Radar, Microwave ovens</td>
+                            </tr>
+                            <tr>
+                                <td class="p-3">Infrared</td>
+                                <td class="p-3">1 mm - 700 nm</td>
+                                <td class="p-3">Remote controls, Thermal imaging</td>
+                            </tr>
+                            <tr>
+                                <td class="p-3">Visible Light</td>
+                                <td class="p-3">700 nm - 400 nm</td>
+                                <td class="p-3">Vision, Optical fibers</td>
+                            </tr>
+                            <tr>
+                                <td class="p-3">Ultraviolet</td>
+                                <td class="p-3">400 nm - 1 nm</td>
+                                <td class="p-3">Water purification, LASIK</td>
+                            </tr>
+                            <tr>
+                                <td class="p-3">X-Rays</td>
+                                <td class="p-3">1 nm - 10⁻³ nm</td>
+                                <td class="p-3">Medical imaging</td>
+                            </tr>
+                            <tr>
+                                <td class="p-3">Gamma Rays</td>
+                                <td class="p-3">< 10⁻³ nm</td>
+                                <td class="p-3">Cancer treatment</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+                <div class="mt-10 pt-6 border-t border-white/10 text-center text-slate-500 text-sm">
+                    BRO YOU CAN AND YOU WILL ⚡
+                </div>
+            </div>
+        </div>
+
+        <div id="quiz-view" class="w-full max-w-4xl flex-col items-center animate-fade-in hidden pb-20">
+            <div class="w-full bg-[#1e293b] border border-white/5 rounded-2xl p-4 mb-6 flex justify-between items-center shadow-lg">
+                <h2 class="text-xl font-bold text-white">Physics Master Quiz</h2>
+                <div class="px-3 py-1 bg-black/30 rounded-lg border border-white/10 font-mono text-lg text-white" id="timer">15:00</div>
+            </div>
+
+            <div id="screen-start" class="w-full bg-[#0f172a] border border-white/5 rounded-2xl p-8 text-center shadow-lg flex flex-col items-center">
+                <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-pink-600 to-purple-600 flex items-center justify-center mb-6 shadow-lg shadow-pink-500/20">
+                    <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </div>
+                <h2 class="text-3xl font-bold text-white mb-2">Practice Quiz</h2>
+                <p class="text-slate-400 mb-8">15 Questions • 15 Minutes • Board Level MCQs</p>
+                <button onclick="quizApp.start()" class="px-8 py-3 rounded-xl bg-white text-black font-bold hover:scale-105 transition-transform">Start Now</button>
+            </div>
+
+            <div id="screen-quiz" class="w-full hidden flex-col">
+                <div class="mb-6">
+                    <div class="text-pink-400 font-bold text-sm tracking-wider mb-2">QUESTION <span id="q-idx">1</span>/15</div>
+                    <div id="q-text" class="text-xl md:text-2xl font-bold text-white leading-relaxed">Loading...</div>
+                </div>
+                <div id="options-box" class="space-y-3 mb-8 w-full"></div>
+                <div class="flex justify-end">
+                    <button id="btn-next" onclick="quizApp.next()" disabled class="px-6 py-3 rounded-xl bg-pink-600 text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-pink-500 transition-colors">Next Question</button>
+                </div>
+            </div>
+
+            <div id="screen-result" class="w-full hidden flex-col">
+                <div class="bg-[#1e293b] border border-white/5 rounded-2xl p-6 mb-6 flex flex-col md:flex-row items-center justify-between gap-6 shadow-lg">
+                    <div class="text-center md:text-left">
+                        <p class="text-slate-400 text-xs uppercase tracking-widest font-bold mb-1">Total Score</p>
+                        <div class="text-5xl font-black text-white"><span id="score">0</span><span class="text-2xl text-slate-500">/15</span></div>
+                        <div id="score-text" class="text-green-400 font-bold mt-2">0% Accuracy</div>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <div class="pie-chart" id="chart-pie">
+                            <div class="pie-inner" id="pie-text">0%</div>
+                        </div>
+                    </div>
+                    <div class="flex gap-3">
+                        <button onclick="quizApp.start()" class="px-5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition-colors border border-white/10">Retake Quiz</button>
+                        <button onclick="exitQuiz()" class="px-5 py-2 rounded-lg bg-pink-600 hover:bg-pink-500 text-white text-xs font-bold transition-colors">Finish & Save</button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <div class="bg-[#1e293b] border border-white/5 rounded-2xl p-6 shadow-lg">
+                        <div class="text-slate-400 text-xs uppercase tracking-widest font-bold mb-4 flex items-center gap-2">
+                            <svg class="w-4 h-4 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z"></path></svg>
+                            Topic Wise Performance
+                        </div>
+                        <div id="chart-bars" class="space-y-4"></div>
+                    </div>
+
+                    <div class="bg-[#1e293b] border border-white/5 rounded-2xl p-6 shadow-lg">
+                        <div class="text-slate-400 text-xs uppercase tracking-widest font-bold mb-4 flex items-center gap-2">
+                            <svg class="w-4 h-4 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path></svg>
+                            Analysis Graph
+                        </div>
+                        <div id="topic-graph" class="graph-container">
+                        </div>
+                    </div>
+                </div>
+
+                <h3 class="text-xl font-bold text-white mb-4 pl-1 border-l-4 border-pink-500">Detailed Review</h3>
+                <div id="review-box" class="space-y-4 w-full"></div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // --- 1. SMART PROGRESS TRACKING LOGIC (UPDATED FOR CHAPTER 8) ---
+        const KEY_PROGRESS = 'physics_chapter_8_progress'; 
+        const KEY_STATE = 'physics_chapter_8_state';       
+
+        const LOCK_TIME = 5500; // 2 HOURS
+        const INTERVAL_DURATION = 1200; // 30 Minutes
+
+        const DEFAULT_STATE = {
+            manual: false, // Worth 50%
+            test: false,   // Worth 20%
+            timeIntervals: 0, // Max 4, worth 7.5% each (Total 30%)
+            timeSpentSeconds: 0 
+        };
+        
+        let chapterState = { ...DEFAULT_STATE };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadState();
+            startTimer();
+            updateUI();
+            saveAndCalculate(); 
+        });
+
+        function loadState() {
+            const savedState = localStorage.getItem(KEY_STATE);
+            if (savedState) {
+                try {
+                    const parsed = JSON.parse(savedState);
+                    chapterState = { ...DEFAULT_STATE, ...parsed };
+                    if(typeof chapterState.timeIntervals !== 'number') chapterState.timeIntervals = 0;
+                    if(typeof chapterState.timeSpentSeconds !== 'number') chapterState.timeSpentSeconds = 0;
+                } catch(e) {
+                    console.error("State load error, resetting", e);
+                    chapterState = { ...DEFAULT_STATE };
+                }
+            }
+        }
+
+        function saveAndCalculate() {
+            localStorage.setItem(KEY_STATE, JSON.stringify(chapterState));
+            
+            // MATH: 50% + 20% + (4 * 7.5%) = 100%
+            let percent = 0;
+            if (chapterState.manual) percent += 50;
+            if (chapterState.test) percent += 20;
+            percent += (chapterState.timeIntervals * 7.5);
+
+            if (percent > 100) percent = 100; 
+            
+            const displayPercent = Math.floor(percent);
+
+            localStorage.setItem(KEY_PROGRESS, displayPercent.toString());
+
+            const indicator = document.getElementById('live-indicator');
+            const txt = document.getElementById('live-percent');
+            const bar = document.getElementById('visual-progress');
+            
+            if(txt) txt.innerText = `${displayPercent}%`;
+            if(bar) bar.style.width = `${displayPercent}%`;
+            
+            if (indicator) {
+                if (displayPercent === 100) {
+                    indicator.classList.remove('bg-orange-500', 'animate-pulse');
+                    indicator.classList.add('bg-green-500');
+                } else {
+                    indicator.classList.add('bg-orange-500', 'animate-pulse');
+                    indicator.classList.remove('bg-green-500');
+                }
+            }
+        }
+
+        function startTimer() {
+            setInterval(() => {
+                chapterState.timeSpentSeconds++;
+                
+                // 1. INTERVAL CHECK
+                let currentIntervals = Math.floor(chapterState.timeSpentSeconds / INTERVAL_DURATION);
+                if (currentIntervals > 4) currentIntervals = 4;
+
+                if (currentIntervals > chapterState.timeIntervals) {
+                    chapterState.timeIntervals = currentIntervals;
+                    saveAndCalculate();
+                    const status = document.getElementById('save-status');
+                    if(status) {
+                        status.innerText = `Progress Added (+7.5%)`;
+                        setTimeout(() => status.innerText = "Tracking Progress...", 3000);
+                    }
+                }
+
+                // 2. UNLOCK CHECK
+                const isLockedUI = document.getElementById('mark-btn-text').innerText.includes('Locked');
+                if (chapterState.timeSpentSeconds >= LOCK_TIME && isLockedUI) {
+                    updateUI(); 
+                    const status = document.getElementById('save-status');
+                    if(status) status.innerText = "Chapter Unlocked!";
+                }
+
+                if (chapterState.timeSpentSeconds % 10 === 0) {
+                    localStorage.setItem(KEY_STATE, JSON.stringify(chapterState));
+                }
+            }, 1000);
+        }
+
+        function toggleStatus() {
+            if (chapterState.timeSpentSeconds < LOCK_TIME && !chapterState.manual) {
+                alert("You must watch this lecture for at least 2 hours before marking it as complete.");
+                return;
+            }
+            chapterState.manual = !chapterState.manual; 
+            updateUI(); 
+            saveAndCalculate(); 
+        }
+
+        function updateUI() {
+            const btn = document.getElementById('mark-done-btn');
+            if(!btn) return;
+            
+            const icon = btn.querySelector('.check-icon');
+            const text = document.getElementById('mark-btn-text');
+            const circle = btn.querySelector('div');
+            const isLocked = chapterState.timeSpentSeconds < LOCK_TIME && !chapterState.manual;
+
+            if (chapterState.manual) {
+                btn.classList.remove('bg-slate-800', 'opacity-50', 'cursor-not-allowed');
+                btn.classList.add('bg-green-600', 'hover:bg-green-500', 'border-green-500', 'text-white');
+                circle.classList.remove('border-slate-400');
+                circle.classList.add('border-white', 'bg-white/20');
+                icon.classList.remove('opacity-0');
+                text.innerText = "Completed";
+            } else if (isLocked) {
+                btn.classList.add('bg-slate-800', 'opacity-50', 'cursor-not-allowed');
+                btn.classList.remove('bg-green-600', 'hover:bg-green-500', 'border-green-500', 'text-white');
+                circle.classList.add('border-slate-400');
+                circle.classList.remove('border-white', 'bg-white/20');
+                icon.classList.add('opacity-0');
+                text.innerText = "Locked (Studying...)";
+            } else {
+                btn.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-green-600');
+                btn.classList.add('bg-slate-800', 'hover:bg-slate-700');
+                circle.classList.add('border-slate-400');
+                icon.classList.add('opacity-0');
+                text.innerText = "Mark Complete";
+            }
+        }
+
+        function finishQuizInternal() {
+            if (!chapterState.test) {
+                chapterState.test = true;
+                saveAndCalculate();
+            }
+        }
+
+        const contentView = document.getElementById('content-view');
+        const quizView = document.getElementById('quiz-view');
+        const headerSub = document.getElementById('header-subtitle');
+        const quizBackBtn = document.getElementById('quiz-back-btn');
+        const saveStatus = document.getElementById('save-status');
+
+        function startQuiz() {
+            contentView.classList.add('hidden');
+            quizView.classList.remove('hidden');
+            quizView.classList.add('flex');
+            headerSub.innerText = "Quiz Mode";
+            quizBackBtn.classList.remove('hidden');
+            saveStatus.classList.add('hidden');
+            const iframe = document.getElementById('main-player');
+            const src = iframe.src;
+            iframe.src = ''; 
+            iframe.setAttribute('data-src', src); 
+        }
+
+        function exitQuiz() {
+            quizView.classList.add('hidden');
+            quizView.classList.remove('flex');
+            contentView.classList.remove('hidden');
+            headerSub.innerText = "Now Watching";
+            quizBackBtn.classList.add('hidden');
+            saveStatus.classList.remove('hidden');
+            const iframe = document.getElementById('main-player');
+            const savedSrc = iframe.getAttribute('data-src');
+            if(savedSrc) iframe.src = savedSrc;
+        }
+
+        // --- QUESTION DATA (From TEST.HTML) ---
+        const questions = [
+            {
+                id: 1,
+                text: "Maxwell's modification of Ampere's Circuital Law introduced the concept of Displacement Current. This current is physically due to:",
+                options: ["Flow of electrons", "Flow of positive ions", "Time-varying magnetic field", "Time-varying electric field"],
+                correct: 3,
+                topic: "Displacement Current",
+                explanation: "Displacement current arises from a changing electric flux (time-varying electric field) between capacitor plates, ensuring continuity of current."
+            },
+            {
+                id: 2,
+                text: "In an electromagnetic wave in free space, the phase difference between the electric field (E) and magnetic field (B) vectors is:",
+                options: ["0", "π/2", "π", "π/4"],
+                correct: 0,
+                topic: "Wave Properties",
+                explanation: "E and B oscillate in phase in an electromagnetic wave. They reach their maxima and minima at the same time."
+            },
+            {
+                id: 3,
+                text: "Which of Maxwell's equations implies that isolated magnetic monopoles do not exist?",
+                options: ["∮ E.dA = Q/ε₀", "∮ B.dA = 0", "∮ E.dl = -dΦB/dt", "∮ B.dl = μ₀I"],
+                correct: 1,
+                topic: "Maxwell's Equations",
+                explanation: "Gauss's Law for Magnetism (∮ B.dA = 0) implies that the net magnetic flux through any closed surface is zero, meaning magnetic poles always exist in pairs."
+            },
+            {
+                id: 4,
+                text: "Why are Microwaves used for Radar systems instead of Radio waves?",
+                options: ["They have lower frequency", "They have larger wavelength", "They have shorter wavelength", "They travel faster"],
+                correct: 2,
+                topic: "Spectrum",
+                explanation: "Microwaves have shorter wavelengths than radio waves, allowing them to be beamed in narrow signals and reflect off small objects like aircraft."
+            },
+            {
+                id: 5,
+                text: "The energy in an electromagnetic wave is:",
+                options: ["Wholly electrostatic", "Wholly magnetic", "Shared equally between electric and magnetic fields", "Depends on the medium"],
+                correct: 2,
+                topic: "Energy Density",
+                explanation: "The average energy density of the Electric field (u_E) is equal to the average energy density of the Magnetic field (u_B). Total energy is shared equally."
+            },
+            {
+                id: 6,
+                text: "If an oscillating charge has a frequency 'v', what is the frequency of the electromagnetic wave produced?",
+                options: ["v", "2v", "v/2", "c/v"],
+                correct: 0,
+                topic: "Sources of EM Waves",
+                explanation: "An oscillating charge radiates EM waves. The frequency of the wave is exactly equal to the frequency of oscillation of the charge."
+            },
+            {
+                id: 7,
+                text: "Which physical quantity is transported by electromagnetic waves?",
+                options: ["Charge", "Current", "Energy and Momentum", "Mass"],
+                correct: 2,
+                topic: "Wave Transport",
+                explanation: "EM waves carry energy (which can heat objects) and momentum (which exerts radiation pressure)."
+            },
+            {
+                id: 8,
+                text: "Why can't we use visible light for long-distance radio communication?",
+                options: ["It travels slower than radio waves", "It is absorbed by the atmosphere", "It has too low frequency", "It has too high wavelength"],
+                correct: 1,
+                topic: "Spectrum",
+                explanation: "Visible light is absorbed and scattered by the atmosphere and cannot bend around the curvature of the earth like radio waves (via ionosphere)."
+            },
+            {
+                id: 9,
+                text: "Which vector represents the direction of propagation of an EM wave?",
+                options: ["E", "B", "E . B", "E x B"],
+                correct: 3,
+                topic: "Poynting Vector",
+                explanation: "The direction of propagation is given by the cross product E x B (Poynting vector direction)."
+            },
+            {
+                id: 10,
+                text: "In the charging of a capacitor, the conduction current (Ic) in the wire and displacement current (Id) between plates are:",
+                options: ["Ic > Id", "Ic < Id", "Ic = Id", "Ic = 0, Id = infinity"],
+                correct: 2,
+                topic: "Displacement Current",
+                explanation: "To maintain continuity, the conduction current in the wires equals the displacement current in the gap between the plates at any instant."
+            },
+            {
+                id: 11,
+                text: "The Ozone layer protects us from which part of the spectrum?",
+                options: ["Infrared", "Microwaves", "Ultraviolet", "X-rays"],
+                correct: 2,
+                topic: "Spectrum",
+                explanation: "The ozone layer absorbs most of the harmful UV radiation (specifically UV-C and most UV-B) from the sun."
+            },
+            {
+                id: 12,
+                text: "Infrared waves are often called 'Heat Waves' because:",
+                options: ["They are produced by hot bodies", "They cause water molecules to vibrate", "They are red in color", "They have high energy"],
+                correct: 1,
+                topic: "Infrared",
+                explanation: "Water molecules (and others) readily absorb IR waves, increasing their thermal motion (vibration), which heats up the substance."
+            },
+            {
+                id: 13,
+                text: "For an EM wave propagating in a medium with permittivity ε and permeability μ, the speed is v. If the medium changes to vacuum, the speed c is:",
+                options: ["c < v", "c = v", "c > v", "Depends on frequency"],
+                correct: 2,
+                topic: "Speed of Light",
+                explanation: "The speed of light in vacuum (c) is the maximum speed. In any material medium, v = 1/√(με) which is always less than c."
+            },
+            {
+                id: 14,
+                text: "Which of the following is NOT a source of electromagnetic waves?",
+                options: ["A charge moving in a circular orbit", "A charge falling in a gravitational field", "A charge at rest", "An oscillating charge"],
+                correct: 2,
+                topic: "Sources",
+                explanation: "Stationary charges produce electrostatic fields only. Accelerated charges (circular motion, falling, oscillating) produce EM waves."
+            },
+            {
+                id: 15,
+                text: "If the electric field amplitude E₀ is 120 N/C, the magnetic field amplitude B₀ is:",
+                options: ["120 T", "360 x 10⁸ T", "4 x 10⁻⁷ T", "120 x 10⁻⁸ T"],
+                correct: 2,
+                topic: "Calculations",
+                explanation: "B₀ = E₀/c = 120 / (3 x 10⁸) = 40 x 10⁻⁸ = 4 x 10⁻⁷ T."
+            }
+        ];
+
+        const quizApp = {
+            idx: 0, answers: Array(questions.length).fill(null), timer: 900, interval: null,
+
+            start: function() {
+                this.idx = 0; this.answers.fill(null); this.timer = 900;
+                document.getElementById('screen-start').classList.add('hidden');
+                document.getElementById('screen-result').classList.add('hidden');
+                document.getElementById('screen-result').classList.remove('flex');
+                const quizScreen = document.getElementById('screen-quiz');
+                quizScreen.classList.remove('hidden');
+                quizScreen.classList.add('flex');
+                this.renderQ();
+                this.startTimer();
+            },
+
+            startTimer: function() {
+                clearInterval(this.interval);
+                this.interval = setInterval(() => {
+                    if(this.timer <= 0) { this.finish(); return; }
+                    this.timer--;
+                    const m = Math.floor(this.timer / 60);
+                    const s = this.timer % 60;
+                    document.getElementById('timer').innerText = `${m}:${s < 10 ? '0'+s : s}`;
+                }, 1000);
+            },
+
+            renderQ: function() {
+                const q = questions[this.idx];
+                document.getElementById('q-idx').innerText = this.idx + 1;
+                document.getElementById('q-text').innerText = q.text;
+                const box = document.getElementById('options-box');
+                box.innerHTML = '';
+                const nextBtn = document.getElementById('btn-next');
+                nextBtn.disabled = true;
+                nextBtn.innerText = (this.idx === questions.length - 1) ? "Submit Quiz" : "Next Question";
+
+                q.options.forEach((opt, i) => {
+                    const div = document.createElement('div');
+                    div.className = 'quiz-option';
+                    div.innerHTML = `<div class="quiz-circle"></div><span class="text-slate-300 font-medium">${opt}</span>`;
+                    div.onclick = () => this.select(i, div);
+                    box.appendChild(div);
+                });
+            },
+
+            select: function(optIdx, el) {
+                this.answers[this.idx] = optIdx;
+                document.querySelectorAll('.quiz-option').forEach(x => x.classList.remove('selected'));
+                el.classList.add('selected');
+                document.getElementById('btn-next').disabled = false;
+            },
+
+            next: function() {
+                if(this.idx < questions.length - 1) { this.idx++; this.renderQ(); } 
+                else { this.finish(); }
+            },
+
+            finish: function() {
+                clearInterval(this.interval);
+                let correctCount = 0;
+                let topicStats = {};
+
+                questions.forEach((q, i) => {
+                    const isCorrect = (this.answers[i] === q.correct);
+                    if(isCorrect) correctCount++;
+                    if(!topicStats[q.topic]) topicStats[q.topic] = { total: 0, right: 0 };
+                    topicStats[q.topic].total++;
+                    if(isCorrect) topicStats[q.topic].right++;
+                });
+
+                document.getElementById('screen-quiz').classList.add('hidden');
+                document.getElementById('screen-quiz').classList.remove('flex');
+                const resultScreen = document.getElementById('screen-result');
+                resultScreen.classList.remove('hidden');
+                resultScreen.classList.add('flex');
+
+                document.getElementById('score').innerText = correctCount;
+                const pct = Math.round((correctCount / questions.length) * 100);
+                document.getElementById('score-text').innerText = `${pct}% Accuracy`;
+                const deg = (correctCount / questions.length) * 360;
+                document.getElementById('chart-pie').style.background = `conic-gradient(#22c55e 0deg ${deg}deg, #ef4444 ${deg}deg 360deg)`;
+                document.getElementById('pie-text').innerText = `${pct}%`;
+
+                const barBox = document.getElementById('chart-bars');
+                const graphBox = document.getElementById('topic-graph');
+                barBox.innerHTML = '';
+                graphBox.innerHTML = '';
+
+                for (const [topic, data] of Object.entries(topicStats)) {
+                    const topicPct = Math.round((data.right / data.total) * 100);
+                    barBox.innerHTML += `
+                        <div class="text-sm">
+                            <div class="flex justify-between text-slate-400 mb-1">
+                                <span class="font-medium text-white">${topic}</span>
+                                <span>${data.right}/${data.total}</span>
+                            </div>
+                            <div class="bar-bg"><div class="bar-fill" style="width: ${topicPct}%"></div></div>
+                        </div>`;
+                    graphBox.innerHTML += `
+                        <div class="graph-bar-group">
+                            <div class="graph-bar" style="height: ${topicPct}%;">
+                                <div class="graph-value">${topicPct}%</div>
+                            </div>
+                            <div class="graph-label">${topic}</div>
+                        </div>`;
+                }
+
+                finishQuizInternal(); 
+
+                const reviewBox = document.getElementById('review-box');
+                reviewBox.innerHTML = '';
+                questions.forEach((q, i) => {
+                    const isRight = (this.answers[i] === q.correct);
+                    reviewBox.innerHTML += `
+                        <div class="p-4 rounded-xl border border-white/5 bg-[#1e293b] ${isRight ? 'border-l-4 border-l-green-500' : 'border-l-4 border-l-red-500'}">
+                            <p class="font-bold text-white mb-2 text-base">Q${i+1}: ${q.text}</p>
+                            <div class="text-sm mb-2"><span class="${isRight ? 'text-green-400' : 'text-red-400'}">Answer: ${this.answers[i]!==null?q.options[this.answers[i]]:'Skipped'}</span></div>
+                            <div class="text-xs text-slate-400">${q.explanation}</div>
+                        </div>`;
+                });
+            }
+        };
+    </script>
+</body>
+</html>
